@@ -1,0 +1,25 @@
+```{toctree}
+---
+caption: ""
+maxdepth: 2
+hidden: true
+---
+
+
+
+
+```
+
+# finance dates
+
+Standard financial dates
+
+[![Build Status](https://github.com/prettygoodcapital/finance-dates/actions/workflows/build.yaml/badge.svg?branch=main&event=push)](https://github.com/prettygoodcapital/finance-dates/actions/workflows/build.yaml)
+[![codecov](https://codecov.io/gh/prettygoodcapital/finance-dates/branch/main/graph/badge.svg)](https://codecov.io/gh/prettygoodcapital/finance-dates)
+[![License](https://img.shields.io/github/license/prettygoodcapital/finance-dates)](https://github.com/prettygoodcapital/finance-dates)
+[![PyPI](https://img.shields.io/pypi/v/finance-dates.svg)](https://pypi.python.org/pypi/finance-dates)
+
+## Overview
+
+> [!NOTE]
+> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).

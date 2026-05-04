@@ -1,0 +1,21 @@
+finance_dates
+=============
+
+.. py:module:: finance_dates
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   finance_dates.__version__
+
+
+Package Contents
+----------------
+
+.. py:data:: __version__
+   :value: '0.1.0'
+
+
