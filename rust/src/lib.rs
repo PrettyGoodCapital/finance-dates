@@ -1,34 +1,11 @@
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Example {
-    pub stuff: String,
-}
+//! Fast date-range, holiday-calendar, and trading-hour utilities.
 
-impl Example {
-    pub fn new(value: String) -> Self {
-        Example { stuff: value }
-    }
-}
+pub mod holiday;
+pub mod range;
+pub mod calendar;
+pub mod trading_hours;
 
-/**********************************/
-#[cfg(test)]
-mod example_tests {
-    use super::*;
-
-    #[test]
-    fn test_new() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(e.stuff, String::from("test"));
-    }
-
-    #[test]
-    fn test_clone_and_eq() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(e, e.clone());
-    }
-
-    #[test]
-    fn test_debug() {
-        let e = Example::new(String::from("test"));
-        assert_eq!(format!("{e:?}"), "Example { stuff: \"test\" }");
-    }
-}
+pub use calendar::{Calendar, calendar_for_exchange, calendar_for_region, EXCHANGE_CODES, REGION_CODES};
+pub use holiday::{HolidayRule, Weekday};
+pub use range::{date_range, business_day_range, STANDARD_WEEKMASK};
+pub use trading_hours::TradingHours;
