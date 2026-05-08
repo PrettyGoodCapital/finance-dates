@@ -246,6 +246,12 @@ impl PyCalendar {
         }
     }
 
+    /// Local early-close time for `date` as `(hour, minute)`, or `None`.
+    fn early_close_for(&self, date: &Bound<'_, PyDate>) -> PyResult<Option<(u32, u32)>> {
+        let d = pydate_to_naive(date)?;
+        Ok(self.inner.early_close_for(d).map(|t| (t.hour(), t.minute())))
+    }
+
     fn __repr__(&self) -> String {
         format!("Calendar({}, {})", self.inner.name, self.inner.market_type.as_str())
     }

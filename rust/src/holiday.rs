@@ -65,6 +65,20 @@ impl HolidayRule {
             }
         }
     }
+
+    /// Return all dates this rule produces in `year`. Equivalent to
+    /// `observed_in` for single-date rules; for `Tabulated` returns every
+    /// row matching the year so multi-day closures are captured.
+    pub fn dates_in(&self, year: i32) -> Vec<NaiveDate> {
+        match self {
+            HolidayRule::Tabulated { table } => table
+                .iter()
+                .filter(|(y, _, _)| *y == year)
+                .filter_map(|(_, m, d)| NaiveDate::from_ymd_opt(year, *m, *d))
+                .collect(),
+            _ => self.observed_in(year).into_iter().collect(),
+        }
+    }
 }
 
 fn apply_roll(d: NaiveDate, roll: WeekendRoll) -> NaiveDate {

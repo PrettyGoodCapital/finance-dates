@@ -175,3 +175,49 @@ def test_calendar_exposes_sessions_and_timezone() -> None:
     assert (open_hh, open_mm, open_off) == (17, 0, -1)
     assert (close_hh, close_mm, close_off) == (16, 0, 0)
     assert cme.timezone == "America/Chicago"
+
+
+def test_nyse_july3_2024_early_close() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    assert cal.early_close_for(date(2024, 7, 3)) == (13, 0)
+    assert cal.early_close_for(date(2024, 7, 5)) is None
+
+
+def test_nyse_black_friday_early_close() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    # 2024 Black Friday = Nov 29.
+    assert cal.early_close_for(date(2024, 11, 29)) == (13, 0)
+
+
+def test_nyse_july3_closed_after_early_close() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    # 14:00 ET on July 3 2024 — should be closed (early close at 13:00).
+    aware = datetime(2024, 7, 3, 18, 0, tzinfo=timezone.utc)  # 14:00 ET (EDT = UTC-4)
+    assert cal.is_open(aware) is False
+
+
+def test_emea_and_latam_calendars_resolve() -> None:
+    for code in ("XAMS", "XMIL", "XSWX", "XJSE", "XKRX", "XSAU", "BVMF", "XMEX"):
+        cal = Calendar.for_exchange(code)
+        assert cal.market_type == "equity"
+        assert cal.timezone != ""
+
+
+def test_tase_uses_sun_thu_weekmask() -> None:
+    cal = Calendar.for_exchange("XTAE")
+    # Monday → Sunday; weekmask[0..6] = [Mon..Sun].
+    # Fri = idx 4 → False, Sun = idx 6 → True.
+    wm = cal.weekmask
+    assert wm[4] is False
+    assert wm[6] is True
+
+
+def test_korean_seollal_2024_multi_day_holiday() -> None:
+    cal = Calendar.for_exchange("XKRX")
+    assert cal.is_holiday(date(2024, 2, 9)) is True
+    assert cal.is_holiday(date(2024, 2, 12)) is True
+
+
+def test_region_br_and_kr_resolve() -> None:
+    assert Calendar.for_region("BR").name == "BVMF"
+    assert Calendar.for_region("KR").name == "XKRX"
