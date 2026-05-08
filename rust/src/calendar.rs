@@ -372,6 +372,42 @@ impl Calendar {
         }
         None
     }
+
+    /// All `(open, close)` UTC instants for every business day in
+    /// `[start, end]` (inclusive). Each business day contributes one entry
+    /// per trading session, with the last session's close adjusted for any
+    /// early-close rule. Returns an empty vector when no trading hours are
+    /// configured.
+    pub fn sessions_between(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Vec<(DateTime<Utc>, DateTime<Utc>)> {
+        let Some(th) = &self.trading_hours else { return Vec::new() };
+        let mut out = Vec::new();
+        let last_idx = th.sessions.len().saturating_sub(1);
+        let mut d = start;
+        while d <= end {
+            if self.is_business_day(d) {
+                let early = self.early_close_for(d);
+                for (i, s) in th.sessions.iter().enumerate() {
+                    let Some((o, mut c)) = s.instants(th.timezone, d) else {
+                        continue;
+                    };
+                    if i == last_idx {
+                        if let Some(t) = early {
+                            if let Some(early_c) = adjust_close(th.timezone, d, s, t) {
+                                c = early_c;
+                            }
+                        }
+                    }
+                    out.push((o, c));
+                }
+            }
+            d += Duration::days(1);
+        }
+        out
+    }
 }
 
 /// Recompute the close instant of `session` on `trading_day` using the
@@ -2201,6 +2237,7 @@ pub fn calendar_for_region(code: &str) -> Option<Calendar> {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+    use chrono::Timelike;
 
     #[test]
     fn nyse_2024_business_day_count() {
@@ -2467,5 +2504,36 @@ mod tests {
         let cal = calendar_for_exchange("XNZE").unwrap();
         // Feb 6 2024 = Tuesday.
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 2, 6).unwrap()));
+    }
+
+    #[test]
+    fn nyse_sessions_between_one_week_with_early_close() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        // Mon Jul 1 — Fri Jul 5 2024. Jul 4 = holiday; Jul 3 = early close.
+        let s = cal.sessions_between(
+            NaiveDate::from_ymd_opt(2024, 7, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 7, 5).unwrap(),
+        );
+        assert_eq!(s.len(), 4);
+        // Jul 3 close (3rd entry) should be 13:00 ET = 17:00 UTC (EDT = UTC-4).
+        let jul3_close_local = s[2].1.with_timezone(&chrono_tz::America::New_York);
+        assert_eq!(jul3_close_local.hour(), 13);
+        assert_eq!(jul3_close_local.minute(), 0);
+        // Jul 5 close (4th entry) should be 16:00 ET (regular).
+        let jul5_close_local = s[3].1.with_timezone(&chrono_tz::America::New_York);
+        assert_eq!(jul5_close_local.hour(), 16);
+    }
+
+    #[test]
+    fn nyse_holidays_between_q3_2024() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        let h = cal.holidays_between(
+            NaiveDate::from_ymd_opt(2024, 7, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 9, 30).unwrap(),
+        );
+        // Jul 4 (Independence Day) and Sep 2 (Labor Day).
+        assert!(h.contains(&NaiveDate::from_ymd_opt(2024, 7, 4).unwrap()));
+        assert!(h.contains(&NaiveDate::from_ymd_opt(2024, 9, 2).unwrap()));
+        assert_eq!(h.len(), 2);
     }
 }

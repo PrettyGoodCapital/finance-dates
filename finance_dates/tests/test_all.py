@@ -221,3 +221,31 @@ def test_korean_seollal_2024_multi_day_holiday() -> None:
 def test_region_br_and_kr_resolve() -> None:
     assert Calendar.for_region("BR").name == "BVMF"
     assert Calendar.for_region("KR").name == "XKRX"
+
+
+def test_business_day_series_method() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    days = cal.business_day_range(date(2024, 7, 1), date(2024, 7, 5))
+    # Jul 4 (Thu) is a holiday → 4 business days.
+    assert days == [date(2024, 7, 1), date(2024, 7, 2), date(2024, 7, 3), date(2024, 7, 5)]
+
+
+def test_holidays_between_q3_2024() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    h = cal.holidays_between(date(2024, 7, 1), date(2024, 9, 30))
+    assert date(2024, 7, 4) in h
+    assert date(2024, 9, 2) in h
+    assert len(h) == 2
+
+
+def test_sessions_between_includes_early_close() -> None:
+    cal = Calendar.for_exchange("XNYS")
+    sess = cal.sessions_between(date(2024, 7, 1), date(2024, 7, 5))
+    # 4 business days × 1 session each.
+    assert len(sess) == 4
+    # Jul 3 close (third entry) is at 13:00 ET = 17:00 UTC during EDT.
+    jul3_close = sess[2][1]
+    assert jul3_close == datetime(2024, 7, 3, 17, 0, tzinfo=timezone.utc)
+    # Jul 5 close is regular 16:00 ET = 20:00 UTC.
+    jul5_close = sess[3][1]
+    assert jul5_close == datetime(2024, 7, 5, 20, 0, tzinfo=timezone.utc)

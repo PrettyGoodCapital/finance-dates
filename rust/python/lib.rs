@@ -218,6 +218,42 @@ impl PyCalendar {
             .collect()
     }
 
+    /// Holidays falling in `[start, end]` (inclusive). Useful for plotting
+    /// "invalid" days alongside a series of business days.
+    fn holidays_between<'py>(
+        &self,
+        py: Python<'py>,
+        start: &Bound<'py, PyDate>,
+        end: &Bound<'py, PyDate>,
+    ) -> PyResult<Vec<Bound<'py, PyDate>>> {
+        let s = pydate_to_naive(start)?;
+        let e = pydate_to_naive(end)?;
+        self.inner
+            .holidays_between(s, e)
+            .iter()
+            .map(|d| naive_to_pydate(py, *d))
+            .collect()
+    }
+
+    /// `(open, close)` UTC datetimes for every business day in
+    /// `[start, end]` (inclusive), with early-close adjustments applied.
+    /// Each entry corresponds to one trading session. Returns an empty
+    /// list if no trading hours are configured.
+    fn sessions_between<'py>(
+        &self,
+        py: Python<'py>,
+        start: &Bound<'py, PyDate>,
+        end: &Bound<'py, PyDate>,
+    ) -> PyResult<Vec<(Bound<'py, PyDateTime>, Bound<'py, PyDateTime>)>> {
+        let s = pydate_to_naive(start)?;
+        let e = pydate_to_naive(end)?;
+        self.inner
+            .sessions_between(s, e)
+            .into_iter()
+            .map(|(o, c)| Ok((utc_to_pydatetime(py, o)?, utc_to_pydatetime(py, c)?)))
+            .collect()
+    }
+
     fn is_open(&self, when: &Bound<'_, PyDateTime>) -> PyResult<bool> {
         Ok(self.inner.is_open(pydatetime_to_utc(when)?))
     }
