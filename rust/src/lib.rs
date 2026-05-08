@@ -5,7 +5,10 @@ pub mod range;
 pub mod calendar;
 pub mod trading_hours;
 
-pub use calendar::{Calendar, calendar_for_exchange, calendar_for_region, EXCHANGE_CODES, REGION_CODES};
+pub use calendar::{
+    calendar_for_exchange, calendar_for_region, Calendar, MarketType, CRYPTO_WEEKMASK,
+    EXCHANGE_CODES, FX_WEEKMASK, REGION_CODES,
+};
 pub use holiday::{HolidayRule, Weekday};
-pub use range::{date_range, business_day_range, STANDARD_WEEKMASK};
-pub use trading_hours::TradingHours;
+pub use range::{business_day_range, date_range, STANDARD_WEEKMASK};
+pub use trading_hours::{Session, TradingHours};

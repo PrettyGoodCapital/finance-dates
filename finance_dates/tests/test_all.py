@@ -120,3 +120,58 @@ def test_holidays_year_returns_dates() -> None:
     hs = cal.holidays(2024)
     assert all(isinstance(d, date) for d in hs)
     assert date(2024, 12, 25) in hs
+
+
+def test_market_types_are_classified() -> None:
+    assert Calendar.for_exchange("XNYS").market_type == "equity"
+    assert Calendar.for_exchange("OPRA").market_type == "options"
+    assert Calendar.for_exchange("XCME").market_type == "futures"
+    assert Calendar.for_exchange("XNYM").market_type == "futures"
+    assert Calendar.for_exchange("CFE").market_type == "futures"
+    assert Calendar.for_exchange("ICE_US").market_type == "futures"
+    assert Calendar.for_exchange("SIFMA_US").market_type == "bond"
+    assert Calendar.for_exchange("FOREX").market_type == "fx"
+    assert Calendar.for_exchange("CRYPTO").market_type == "crypto"
+
+
+def test_cme_futures_open_sunday_evening_chicago() -> None:
+    cal = Calendar.for_exchange("XCME")
+    # Sunday Jan 7 2024 23:00 UTC = 17:00 CT — first instant of Mon's session.
+    inst = datetime(2024, 1, 7, 23, 0, tzinfo=timezone.utc)
+    assert cal.is_open(inst)
+
+
+def test_forex_open_continuously_during_week() -> None:
+    cal = Calendar.for_exchange("FOREX")
+    # Tuesday 08:00 UTC = 03:00 NY — continuous FX session.
+    inst = datetime(2024, 1, 9, 8, 0, tzinfo=timezone.utc)
+    assert cal.is_open(inst)
+
+
+def test_crypto_open_on_saturday() -> None:
+    cal = Calendar.for_exchange("CRYPTO")
+    inst = datetime(2024, 1, 13, 3, 0, tzinfo=timezone.utc)
+    assert cal.is_open(inst)
+
+
+def test_sifma_includes_columbus_and_veterans() -> None:
+    cal = Calendar.for_exchange("SIFMA_US")
+    assert cal.is_holiday(date(2024, 11, 11))  # Veterans Day
+    assert cal.is_holiday(date(2024, 10, 14))  # Columbus Day
+
+
+def test_all_exchange_codes_resolve() -> None:
+    from finance_dates import EXCHANGE_CODES
+    for code in EXCHANGE_CODES:
+        cal = Calendar.for_exchange(code)
+        assert cal.name.upper() == code.upper()
+
+
+def test_calendar_exposes_sessions_and_timezone() -> None:
+    cme = Calendar.for_exchange("XCME")
+    sessions = cme.sessions
+    assert len(sessions) == 1
+    open_hh, open_mm, open_off, close_hh, close_mm, close_off = sessions[0]
+    assert (open_hh, open_mm, open_off) == (17, 0, -1)
+    assert (close_hh, close_mm, close_off) == (16, 0, 0)
+    assert cme.timezone == "America/Chicago"

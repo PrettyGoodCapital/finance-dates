@@ -7,7 +7,7 @@ use pyo3::types::{PyDate, PyDateTime, PyTzInfo};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 
 use ::finance_dates::{
-    calendar_for_exchange, calendar_for_region, business_day_range as core_business_day_range,
+    business_day_range as core_business_day_range, calendar_for_exchange, calendar_for_region,
     date_range as core_date_range, EXCHANGE_CODES, REGION_CODES, STANDARD_WEEKMASK,
 };
 
@@ -123,8 +123,44 @@ impl PyCalendar {
     }
 
     #[getter]
+    fn market_type(&self) -> &'static str {
+        self.inner.market_type.as_str()
+    }
+
+    #[getter]
     fn weekmask(&self) -> Vec<bool> {
         self.inner.weekmask.to_vec()
+    }
+
+    /// Trading sessions as `[(open_hh, open_mm, open_offset, close_hh, close_mm, close_offset)]`.
+    #[getter]
+    fn sessions(&self) -> Vec<(u32, u32, i32, u32, u32, i32)> {
+        match &self.inner.trading_hours {
+            None => vec![],
+            Some(th) => th
+                .sessions
+                .iter()
+                .map(|s| {
+                    (
+                        s.open.hour(),
+                        s.open.minute(),
+                        s.open_day_offset,
+                        s.close.hour(),
+                        s.close.minute(),
+                        s.close_day_offset,
+                    )
+                })
+                .collect(),
+        }
+    }
+
+    /// IANA timezone name for trading hours, or "" if no hours configured.
+    #[getter]
+    fn timezone(&self) -> String {
+        match &self.inner.trading_hours {
+            Some(th) => th.timezone.name().to_string(),
+            None => String::new(),
+        }
     }
 
     fn is_business_day(&self, d: &Bound<'_, PyDate>) -> PyResult<bool> {
@@ -211,7 +247,7 @@ impl PyCalendar {
     }
 
     fn __repr__(&self) -> String {
-        format!("Calendar({})", self.inner.name)
+        format!("Calendar({}, {})", self.inner.name, self.inner.market_type.as_str())
     }
 }
 
