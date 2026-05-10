@@ -10,7 +10,7 @@ path = "rust/python/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-finance_dates = { path = "./rust", version = "*" }
+finance-dates = { path = "./rust", version = "*" }
 pyo3 = { version = "0.28.2", features = ["abi3", "abi3-py310", "extension-module", "multiple-pymethods"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 

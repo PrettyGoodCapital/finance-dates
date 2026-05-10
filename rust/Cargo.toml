@@ -1,5 +1,5 @@
 [package]
-name = "finance_dates"
+name = "finance-dates"
 version = "0.1.0"
 authors = ["PrettyGoodCapital <prettygoodcapital@gmail.com>"]
 edition = "2021"
