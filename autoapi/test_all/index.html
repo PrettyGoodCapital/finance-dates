@@ -242,12 +242,106 @@
         <article role="main" id="furo-main-content">
           <section id="module-test_all">
 <span id="test-all"></span><h1>test_all<a class="headerlink" href="#module-test_all" title="Link to this heading">¶</a></h1>
+<p>Smoke tests for finance-dates.</p>
 <section id="functions">
 <h2>Functions<a class="headerlink" href="#functions" title="Link to this heading">¶</a></h2>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_all" title="test_all.test_all"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_all</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_exchange_and_region_lists" title="test_all.test_exchange_and_region_lists"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_exchange_and_region_lists</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_date_range_unit_step" title="test_all.test_date_range_unit_step"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_date_range_unit_step</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_business_day_range_excludes_weekends" title="test_all.test_business_day_range_excludes_weekends"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_business_day_range_excludes_weekends</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_nyse_2024_has_252_trading_days" title="test_all.test_nyse_2024_has_252_trading_days"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_2024_has_252_trading_days</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_nyse_christmas_2022_observed_monday" title="test_all.test_nyse_christmas_2022_observed_monday"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_christmas_2022_observed_monday</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_nyse_juneteenth_first_year_2021" title="test_all.test_nyse_juneteenth_first_year_2021"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_juneteenth_first_year_2021</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_lse_easter_monday_2024" title="test_all.test_lse_easter_monday_2024"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_lse_easter_monday_2024</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_region_us_resolves_to_xnys" title="test_all.test_region_us_resolves_to_xnys"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_region_us_resolves_to_xnys</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_next_and_previous_business_day_skip_holidays" title="test_all.test_next_and_previous_business_day_skip_holidays"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_next_and_previous_business_day_skip_holidays</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_business_day_range_method" title="test_all.test_business_day_range_method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_business_day_range_method</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_is_open_at_market_open" title="test_all.test_is_open_at_market_open"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_is_open_at_market_open</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_is_open_handles_dst" title="test_all.test_is_open_handles_dst"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_is_open_handles_dst</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_is_open_closed_on_weekend" title="test_all.test_is_open_closed_on_weekend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_is_open_closed_on_weekend</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_unknown_exchange_raises" title="test_all.test_unknown_exchange_raises"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_unknown_exchange_raises</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_holidays_year_returns_dates" title="test_all.test_holidays_year_returns_dates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_holidays_year_returns_dates</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_market_types_are_classified" title="test_all.test_market_types_are_classified"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_market_types_are_classified</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_cme_futures_open_sunday_evening_chicago" title="test_all.test_cme_futures_open_sunday_evening_chicago"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_cme_futures_open_sunday_evening_chicago</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_forex_open_continuously_during_week" title="test_all.test_forex_open_continuously_during_week"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_forex_open_continuously_during_week</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_crypto_open_on_saturday" title="test_all.test_crypto_open_on_saturday"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_crypto_open_on_saturday</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_sifma_includes_columbus_and_veterans" title="test_all.test_sifma_includes_columbus_and_veterans"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_sifma_includes_columbus_and_veterans</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_all_exchange_codes_resolve" title="test_all.test_all_exchange_codes_resolve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_all_exchange_codes_resolve</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_calendar_exposes_sessions_and_timezone" title="test_all.test_calendar_exposes_sessions_and_timezone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_calendar_exposes_sessions_and_timezone</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_nyse_july3_2024_early_close" title="test_all.test_nyse_july3_2024_early_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_july3_2024_early_close</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_nyse_black_friday_early_close" title="test_all.test_nyse_black_friday_early_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_black_friday_early_close</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_nyse_july3_closed_after_early_close" title="test_all.test_nyse_july3_closed_after_early_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_nyse_july3_closed_after_early_close</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_emea_and_latam_calendars_resolve" title="test_all.test_emea_and_latam_calendars_resolve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_emea_and_latam_calendars_resolve</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_tase_uses_sun_thu_weekmask" title="test_all.test_tase_uses_sun_thu_weekmask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_tase_uses_sun_thu_weekmask</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_korean_seollal_2024_multi_day_holiday" title="test_all.test_korean_seollal_2024_multi_day_holiday"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_korean_seollal_2024_multi_day_holiday</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_region_br_and_kr_resolve" title="test_all.test_region_br_and_kr_resolve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_region_br_and_kr_resolve</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_business_day_series_method" title="test_all.test_business_day_series_method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_business_day_series_method</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#test_all.test_holidays_between_q3_2024" title="test_all.test_holidays_between_q3_2024"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_holidays_between_q3_2024</span></code></a>(→ None)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#test_all.test_sessions_between_includes_early_close" title="test_all.test_sessions_between_includes_early_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">test_sessions_between_includes_early_close</span></code></a>(→ None)</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -257,8 +351,163 @@
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 <dl class="py function">
-<dt class="sig sig-object py" id="test_all.test_all">
-<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#test_all.test_all" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="test_all.test_exchange_and_region_lists">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_exchange_and_region_lists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_exchange_and_region_lists" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_date_range_unit_step">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_date_range_unit_step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_date_range_unit_step" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_business_day_range_excludes_weekends">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_business_day_range_excludes_weekends</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_business_day_range_excludes_weekends" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_2024_has_252_trading_days">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_2024_has_252_trading_days</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_2024_has_252_trading_days" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_christmas_2022_observed_monday">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_christmas_2022_observed_monday</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_christmas_2022_observed_monday" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_juneteenth_first_year_2021">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_juneteenth_first_year_2021</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_juneteenth_first_year_2021" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_lse_easter_monday_2024">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_lse_easter_monday_2024</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_lse_easter_monday_2024" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_region_us_resolves_to_xnys">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_region_us_resolves_to_xnys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_region_us_resolves_to_xnys" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_next_and_previous_business_day_skip_holidays">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_next_and_previous_business_day_skip_holidays</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_next_and_previous_business_day_skip_holidays" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_business_day_range_method">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_business_day_range_method</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_business_day_range_method" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_is_open_at_market_open">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_is_open_at_market_open</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_is_open_at_market_open" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_is_open_handles_dst">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_is_open_handles_dst</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_is_open_handles_dst" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_is_open_closed_on_weekend">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_is_open_closed_on_weekend</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_is_open_closed_on_weekend" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_unknown_exchange_raises">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_unknown_exchange_raises</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_unknown_exchange_raises" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_holidays_year_returns_dates">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_holidays_year_returns_dates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_holidays_year_returns_dates" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_market_types_are_classified">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_market_types_are_classified</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_market_types_are_classified" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_cme_futures_open_sunday_evening_chicago">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_cme_futures_open_sunday_evening_chicago</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_cme_futures_open_sunday_evening_chicago" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_forex_open_continuously_during_week">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_forex_open_continuously_during_week</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_forex_open_continuously_during_week" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_crypto_open_on_saturday">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_crypto_open_on_saturday</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_crypto_open_on_saturday" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_sifma_includes_columbus_and_veterans">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_sifma_includes_columbus_and_veterans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_sifma_includes_columbus_and_veterans" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_all_exchange_codes_resolve">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_all_exchange_codes_resolve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_all_exchange_codes_resolve" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_calendar_exposes_sessions_and_timezone">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_calendar_exposes_sessions_and_timezone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_calendar_exposes_sessions_and_timezone" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_july3_2024_early_close">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_july3_2024_early_close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_july3_2024_early_close" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_black_friday_early_close">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_black_friday_early_close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_black_friday_early_close" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_nyse_july3_closed_after_early_close">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_nyse_july3_closed_after_early_close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_nyse_july3_closed_after_early_close" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_emea_and_latam_calendars_resolve">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_emea_and_latam_calendars_resolve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_emea_and_latam_calendars_resolve" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_tase_uses_sun_thu_weekmask">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_tase_uses_sun_thu_weekmask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_tase_uses_sun_thu_weekmask" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_korean_seollal_2024_multi_day_holiday">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_korean_seollal_2024_multi_day_holiday</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_korean_seollal_2024_multi_day_holiday" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_region_br_and_kr_resolve">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_region_br_and_kr_resolve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_region_br_and_kr_resolve" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_business_day_series_method">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_business_day_series_method</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_business_day_series_method" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_holidays_between_q3_2024">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_holidays_between_q3_2024</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_holidays_between_q3_2024" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_all.test_sessions_between_includes_early_close">
+<span class="sig-prename descclassname"><span class="pre">test_all.</span></span><span class="sig-name descname"><span class="pre">test_sessions_between_includes_early_close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#test_all.test_sessions_between_includes_early_close" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </section>
@@ -322,7 +571,38 @@
 <li><a class="reference internal" href="#">test_all</a><ul>
 <li><a class="reference internal" href="#functions">Functions</a></li>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
-<li><a class="reference internal" href="#test_all.test_all"><code class="docutils literal notranslate"><span class="pre">test_all()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_exchange_and_region_lists"><code class="docutils literal notranslate"><span class="pre">test_exchange_and_region_lists()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_date_range_unit_step"><code class="docutils literal notranslate"><span class="pre">test_date_range_unit_step()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_business_day_range_excludes_weekends"><code class="docutils literal notranslate"><span class="pre">test_business_day_range_excludes_weekends()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_2024_has_252_trading_days"><code class="docutils literal notranslate"><span class="pre">test_nyse_2024_has_252_trading_days()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_christmas_2022_observed_monday"><code class="docutils literal notranslate"><span class="pre">test_nyse_christmas_2022_observed_monday()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_juneteenth_first_year_2021"><code class="docutils literal notranslate"><span class="pre">test_nyse_juneteenth_first_year_2021()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_lse_easter_monday_2024"><code class="docutils literal notranslate"><span class="pre">test_lse_easter_monday_2024()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_region_us_resolves_to_xnys"><code class="docutils literal notranslate"><span class="pre">test_region_us_resolves_to_xnys()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_next_and_previous_business_day_skip_holidays"><code class="docutils literal notranslate"><span class="pre">test_next_and_previous_business_day_skip_holidays()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_business_day_range_method"><code class="docutils literal notranslate"><span class="pre">test_business_day_range_method()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_is_open_at_market_open"><code class="docutils literal notranslate"><span class="pre">test_is_open_at_market_open()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_is_open_handles_dst"><code class="docutils literal notranslate"><span class="pre">test_is_open_handles_dst()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_is_open_closed_on_weekend"><code class="docutils literal notranslate"><span class="pre">test_is_open_closed_on_weekend()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_unknown_exchange_raises"><code class="docutils literal notranslate"><span class="pre">test_unknown_exchange_raises()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_holidays_year_returns_dates"><code class="docutils literal notranslate"><span class="pre">test_holidays_year_returns_dates()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_market_types_are_classified"><code class="docutils literal notranslate"><span class="pre">test_market_types_are_classified()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_cme_futures_open_sunday_evening_chicago"><code class="docutils literal notranslate"><span class="pre">test_cme_futures_open_sunday_evening_chicago()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_forex_open_continuously_during_week"><code class="docutils literal notranslate"><span class="pre">test_forex_open_continuously_during_week()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_crypto_open_on_saturday"><code class="docutils literal notranslate"><span class="pre">test_crypto_open_on_saturday()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_sifma_includes_columbus_and_veterans"><code class="docutils literal notranslate"><span class="pre">test_sifma_includes_columbus_and_veterans()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_all_exchange_codes_resolve"><code class="docutils literal notranslate"><span class="pre">test_all_exchange_codes_resolve()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_calendar_exposes_sessions_and_timezone"><code class="docutils literal notranslate"><span class="pre">test_calendar_exposes_sessions_and_timezone()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_july3_2024_early_close"><code class="docutils literal notranslate"><span class="pre">test_nyse_july3_2024_early_close()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_black_friday_early_close"><code class="docutils literal notranslate"><span class="pre">test_nyse_black_friday_early_close()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_nyse_july3_closed_after_early_close"><code class="docutils literal notranslate"><span class="pre">test_nyse_july3_closed_after_early_close()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_emea_and_latam_calendars_resolve"><code class="docutils literal notranslate"><span class="pre">test_emea_and_latam_calendars_resolve()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_tase_uses_sun_thu_weekmask"><code class="docutils literal notranslate"><span class="pre">test_tase_uses_sun_thu_weekmask()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_korean_seollal_2024_multi_day_holiday"><code class="docutils literal notranslate"><span class="pre">test_korean_seollal_2024_multi_day_holiday()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_region_br_and_kr_resolve"><code class="docutils literal notranslate"><span class="pre">test_region_br_and_kr_resolve()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_business_day_series_method"><code class="docutils literal notranslate"><span class="pre">test_business_day_series_method()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_holidays_between_q3_2024"><code class="docutils literal notranslate"><span class="pre">test_holidays_between_q3_2024()</span></code></a></li>
+<li><a class="reference internal" href="#test_all.test_sessions_between_includes_early_close"><code class="docutils literal notranslate"><span class="pre">test_sessions_between_includes_early_close()</span></code></a></li>
 </ul>
 </li>
 </ul>

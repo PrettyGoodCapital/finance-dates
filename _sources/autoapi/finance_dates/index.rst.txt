@@ -3,19 +3,27 @@ finance_dates
 
 .. py:module:: finance_dates
 
+.. autoapi-nested-parse::
+
+   Fast date-range generation, holiday calendars, and trading hours.
+
+   The Rust core handles holiday-rule expansion, weekend-roll observance, and
+   DST-aware trading hours. This Python module is a thin re-export layer.
+
+
 
 Attributes
 ----------
 
 .. autoapisummary::
 
-   finance_dates.__version__
+   finance_dates.Calendar
 
 
 Package Contents
 ----------------
 
-.. py:data:: __version__
-   :value: '0.1.0'
+.. py:data:: Calendar
+   :value: None
 
 

@@ -3,17 +3,115 @@ test_all
 
 .. py:module:: test_all
 
+.. autoapi-nested-parse::
+
+   Smoke tests for finance-dates.
+
+
 
 Functions
 ---------
 
 .. autoapisummary::
 
-   test_all.test_all
+   test_all.test_exchange_and_region_lists
+   test_all.test_date_range_unit_step
+   test_all.test_business_day_range_excludes_weekends
+   test_all.test_nyse_2024_has_252_trading_days
+   test_all.test_nyse_christmas_2022_observed_monday
+   test_all.test_nyse_juneteenth_first_year_2021
+   test_all.test_lse_easter_monday_2024
+   test_all.test_region_us_resolves_to_xnys
+   test_all.test_next_and_previous_business_day_skip_holidays
+   test_all.test_business_day_range_method
+   test_all.test_is_open_at_market_open
+   test_all.test_is_open_handles_dst
+   test_all.test_is_open_closed_on_weekend
+   test_all.test_unknown_exchange_raises
+   test_all.test_holidays_year_returns_dates
+   test_all.test_market_types_are_classified
+   test_all.test_cme_futures_open_sunday_evening_chicago
+   test_all.test_forex_open_continuously_during_week
+   test_all.test_crypto_open_on_saturday
+   test_all.test_sifma_includes_columbus_and_veterans
+   test_all.test_all_exchange_codes_resolve
+   test_all.test_calendar_exposes_sessions_and_timezone
+   test_all.test_nyse_july3_2024_early_close
+   test_all.test_nyse_black_friday_early_close
+   test_all.test_nyse_july3_closed_after_early_close
+   test_all.test_emea_and_latam_calendars_resolve
+   test_all.test_tase_uses_sun_thu_weekmask
+   test_all.test_korean_seollal_2024_multi_day_holiday
+   test_all.test_region_br_and_kr_resolve
+   test_all.test_business_day_series_method
+   test_all.test_holidays_between_q3_2024
+   test_all.test_sessions_between_includes_early_close
 
 
 Module Contents
 ---------------
 
-.. py:function:: test_all()
+.. py:function:: test_exchange_and_region_lists() -> None
+
+.. py:function:: test_date_range_unit_step() -> None
+
+.. py:function:: test_business_day_range_excludes_weekends() -> None
+
+.. py:function:: test_nyse_2024_has_252_trading_days() -> None
+
+.. py:function:: test_nyse_christmas_2022_observed_monday() -> None
+
+.. py:function:: test_nyse_juneteenth_first_year_2021() -> None
+
+.. py:function:: test_lse_easter_monday_2024() -> None
+
+.. py:function:: test_region_us_resolves_to_xnys() -> None
+
+.. py:function:: test_next_and_previous_business_day_skip_holidays() -> None
+
+.. py:function:: test_business_day_range_method() -> None
+
+.. py:function:: test_is_open_at_market_open() -> None
+
+.. py:function:: test_is_open_handles_dst() -> None
+
+.. py:function:: test_is_open_closed_on_weekend() -> None
+
+.. py:function:: test_unknown_exchange_raises() -> None
+
+.. py:function:: test_holidays_year_returns_dates() -> None
+
+.. py:function:: test_market_types_are_classified() -> None
+
+.. py:function:: test_cme_futures_open_sunday_evening_chicago() -> None
+
+.. py:function:: test_forex_open_continuously_during_week() -> None
+
+.. py:function:: test_crypto_open_on_saturday() -> None
+
+.. py:function:: test_sifma_includes_columbus_and_veterans() -> None
+
+.. py:function:: test_all_exchange_codes_resolve() -> None
+
+.. py:function:: test_calendar_exposes_sessions_and_timezone() -> None
+
+.. py:function:: test_nyse_july3_2024_early_close() -> None
+
+.. py:function:: test_nyse_black_friday_early_close() -> None
+
+.. py:function:: test_nyse_july3_closed_after_early_close() -> None
+
+.. py:function:: test_emea_and_latam_calendars_resolve() -> None
+
+.. py:function:: test_tase_uses_sun_thu_weekmask() -> None
+
+.. py:function:: test_korean_seollal_2024_multi_day_holiday() -> None
+
+.. py:function:: test_region_br_and_kr_resolve() -> None
+
+.. py:function:: test_business_day_series_method() -> None
+
+.. py:function:: test_holidays_between_q3_2024() -> None
+
+.. py:function:: test_sessions_between_includes_early_close() -> None
 
