@@ -51,6 +51,7 @@ develop = [
     "ty",
     "uv",
     "wheel",
+    "yardang",
 ]
 
 [project.scripts]
@@ -197,6 +198,9 @@ section-order = [
 [tool.yardang]
 title = "finance dates"
 root = "README.md"
-pages = []
-use-autoapi = true
+pages = [
+    "docs/src/CALENDARS.md",
+    "docs/src/API.md",
+]
+use-autoapi = false
 

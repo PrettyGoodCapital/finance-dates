@@ -68,10 +68,24 @@ impl Session {
     }
 }
 
+/// One named non-regular trading window, such as pre-open or after-close.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ExtendedSession {
+    pub name: &'static str,
+    pub session: Session,
+}
+
+impl ExtendedSession {
+    pub const fn new(name: &'static str, session: Session) -> Self {
+        Self { name, session }
+    }
+}
+
 /// One or more sessions per trading day, all in the same local timezone.
 #[derive(Clone, Debug)]
 pub struct TradingHours {
     pub sessions: Vec<Session>,
+    pub extended_sessions: Vec<ExtendedSession>,
     pub timezone: Tz,
 }
 
@@ -80,12 +94,22 @@ impl TradingHours {
     pub fn new(open: NaiveTime, close: NaiveTime, timezone: Tz) -> Self {
         Self {
             sessions: vec![Session::regular(open, close)],
+            extended_sessions: Vec::new(),
             timezone,
         }
     }
 
     pub fn from_sessions(sessions: Vec<Session>, timezone: Tz) -> Self {
-        Self { sessions, timezone }
+        Self {
+            sessions,
+            extended_sessions: Vec::new(),
+            timezone,
+        }
+    }
+
+    pub fn with_extended_sessions(mut self, extended_sessions: Vec<ExtendedSession>) -> Self {
+        self.extended_sessions = extended_sessions;
+        self
     }
 
     /// Convenience: 24-hour-a-day, 5-day-a-week (open prev 17:00, close 17:00 NY).

@@ -6,11 +6,11 @@ from datetime import date, datetime, timezone
 
 import pytest
 
+import finance_dates
 from finance_dates import (
     EXCHANGE_CODES,
     REGION_CODES,
     Calendar,
-    business_day_range,
     date_range,
 )
 
@@ -33,9 +33,13 @@ def test_date_range_unit_step() -> None:
     ]
 
 
-def test_business_day_range_excludes_weekends() -> None:
+def test_top_level_business_day_range_helper_is_removed() -> None:
+    assert not hasattr(finance_dates, "business_day_range")
+
+
+def test_range_calendar_business_days_excludes_weekends() -> None:
     # Mon Jan 1 2024 (holiday-blind) through Sun Jan 7 2024.
-    out = business_day_range(date(2024, 1, 1), date(2024, 1, 7))
+    out = Calendar.from_range(date(2024, 1, 1), date(2024, 1, 7)).business_days()
     assert out == [
         date(2024, 1, 1),
         date(2024, 1, 2),
@@ -45,19 +49,104 @@ def test_business_day_range_excludes_weekends() -> None:
     ]
 
 
+def test_range_calendar_days_and_business_days() -> None:
+    cal = Calendar.from_range(date(2024, 1, 1), date(2024, 1, 7))
+
+    assert cal.days() == [
+        date(2024, 1, 1),
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        date(2024, 1, 4),
+        date(2024, 1, 5),
+        date(2024, 1, 6),
+        date(2024, 1, 7),
+    ]
+    assert cal.business_days() == [
+        date(2024, 1, 1),
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        date(2024, 1, 4),
+        date(2024, 1, 5),
+    ]
+
+
+def test_exchange_calendar_new_api_names() -> None:
+    cal = Calendar.from_exchange("XNYS")
+
+    assert Calendar.from_region("US").name == "XNYS"
+    assert cal.business_days(date(2024, 7, 1), date(2024, 7, 5)) == [
+        date(2024, 7, 1),
+        date(2024, 7, 2),
+        date(2024, 7, 3),
+        date(2024, 7, 5),
+    ]
+    assert cal.holidays(date(2024, 7, 1), date(2024, 9, 30)) == [
+        date(2024, 7, 4),
+        date(2024, 9, 2),
+    ]
+    sessions = cal.sessions(date(2024, 7, 1), date(2024, 7, 5))
+    assert len(sessions) == 4
+    assert sessions[2][1] == datetime(2024, 7, 3, 17, 0, tzinfo=timezone.utc)
+
+
+def test_calendar_compatibility_aliases_are_removed() -> None:
+    assert not hasattr(Calendar, "for_exchange")
+    assert not hasattr(Calendar, "for_region")
+
+    cal = Calendar.from_exchange("XNYS")
+    assert not hasattr(cal, "business_day_range")
+    assert not hasattr(cal, "holidays_between")
+    assert not hasattr(cal, "sessions_between")
+
+
+def test_nyse_extended_hours_are_exposed() -> None:
+    cal = Calendar.from_exchange("XNYS")
+
+    assert cal.regular_sessions == [(9, 30, 0, 16, 0, 0)]
+    assert cal.extended_hours == [
+        ("pre_open", 4, 0, 0, 9, 30, 0),
+        ("after_close", 16, 0, 0, 20, 0, 0),
+    ]
+
+    windows = cal.extended_sessions(date(2024, 1, 8), date(2024, 1, 8))
+    assert windows == [
+        (
+            "pre_open",
+            datetime(2024, 1, 8, 9, 0, tzinfo=timezone.utc),
+            datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc),
+        ),
+        (
+            "after_close",
+            datetime(2024, 1, 8, 21, 0, tzinfo=timezone.utc),
+            datetime(2024, 1, 9, 1, 0, tzinfo=timezone.utc),
+        ),
+    ]
+
+
+def test_nyse_after_close_starts_at_early_close() -> None:
+    cal = Calendar.from_exchange("XNYS")
+
+    windows = cal.extended_sessions(date(2024, 7, 3), date(2024, 7, 3))
+    assert windows[1] == (
+        "after_close",
+        datetime(2024, 7, 3, 17, 0, tzinfo=timezone.utc),
+        datetime(2024, 7, 4, 0, 0, tzinfo=timezone.utc),
+    )
+
+
 def test_nyse_2024_has_252_trading_days() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     assert cal.business_days_between(date(2024, 1, 1), date(2024, 12, 31)) == 252
 
 
 def test_nyse_christmas_2022_observed_monday() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     assert cal.is_holiday(date(2022, 12, 26))
     assert not cal.is_business_day(date(2022, 12, 26))
 
 
 def test_nyse_juneteenth_first_year_2021() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # Not a holiday before 2021.
     assert not cal.is_holiday(date(2020, 6, 19))
     # 2021 Jun 19 was Saturday → observed Friday Jun 18.
@@ -65,31 +154,31 @@ def test_nyse_juneteenth_first_year_2021() -> None:
 
 
 def test_lse_easter_monday_2024() -> None:
-    cal = Calendar.for_exchange("XLON")
+    cal = Calendar.from_exchange("XLON")
     assert cal.is_holiday(date(2024, 4, 1))
 
 
 def test_region_us_resolves_to_xnys() -> None:
-    assert Calendar.for_region("US").name == "XNYS"
+    assert Calendar.from_region("US").name == "XNYS"
 
 
 def test_next_and_previous_business_day_skip_holidays() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # Day after Christmas 2022 observed → Tue Dec 27.
     assert cal.next_business_day(date(2022, 12, 23)) == date(2022, 12, 27)
     assert cal.previous_business_day(date(2022, 12, 27)) == date(2022, 12, 23)
 
 
-def test_business_day_range_method() -> None:
-    cal = Calendar.for_exchange("XNYS")
-    out = cal.business_day_range(date(2024, 7, 1), date(2024, 7, 8))
+def test_business_days_method() -> None:
+    cal = Calendar.from_exchange("XNYS")
+    out = cal.business_days(date(2024, 7, 1), date(2024, 7, 8))
     assert date(2024, 7, 4) not in out  # Independence Day
     assert date(2024, 7, 6) not in out  # Saturday
     assert date(2024, 7, 8) in out
 
 
 def test_is_open_at_market_open() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # 14:30 UTC == 09:30 EST on 2024-01-08 (winter, UTC-5).
     inst = datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc)
     assert cal.is_open(inst)
@@ -98,64 +187,64 @@ def test_is_open_at_market_open() -> None:
 
 
 def test_is_open_handles_dst() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # 2024-03-11 is the Mon after DST start. 13:30 UTC == 09:30 EDT.
     inst = datetime(2024, 3, 11, 13, 30, tzinfo=timezone.utc)
     assert cal.is_open(inst)
 
 
 def test_is_open_closed_on_weekend() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     inst = datetime(2024, 1, 6, 15, 0, tzinfo=timezone.utc)  # Sat
     assert not cal.is_open(inst)
 
 
 def test_unknown_exchange_raises() -> None:
     with pytest.raises(ValueError):
-        Calendar.for_exchange("ZZZZ")
+        Calendar.from_exchange("ZZZZ")
 
 
 def test_holidays_year_returns_dates() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     hs = cal.holidays(2024)
     assert all(isinstance(d, date) for d in hs)
     assert date(2024, 12, 25) in hs
 
 
 def test_market_types_are_classified() -> None:
-    assert Calendar.for_exchange("XNYS").market_type == "equity"
-    assert Calendar.for_exchange("OPRA").market_type == "options"
-    assert Calendar.for_exchange("XCME").market_type == "futures"
-    assert Calendar.for_exchange("XNYM").market_type == "futures"
-    assert Calendar.for_exchange("CFE").market_type == "futures"
-    assert Calendar.for_exchange("ICE_US").market_type == "futures"
-    assert Calendar.for_exchange("SIFMA_US").market_type == "bond"
-    assert Calendar.for_exchange("FOREX").market_type == "fx"
-    assert Calendar.for_exchange("CRYPTO").market_type == "crypto"
+    assert Calendar.from_exchange("XNYS").market_type == "equity"
+    assert Calendar.from_exchange("OPRA").market_type == "options"
+    assert Calendar.from_exchange("XCME").market_type == "futures"
+    assert Calendar.from_exchange("XNYM").market_type == "futures"
+    assert Calendar.from_exchange("CFE").market_type == "futures"
+    assert Calendar.from_exchange("ICE_US").market_type == "futures"
+    assert Calendar.from_exchange("SIFMA_US").market_type == "bond"
+    assert Calendar.from_exchange("FOREX").market_type == "fx"
+    assert Calendar.from_exchange("CRYPTO").market_type == "crypto"
 
 
 def test_cme_futures_open_sunday_evening_chicago() -> None:
-    cal = Calendar.for_exchange("XCME")
+    cal = Calendar.from_exchange("XCME")
     # Sunday Jan 7 2024 23:00 UTC = 17:00 CT — first instant of Mon's session.
     inst = datetime(2024, 1, 7, 23, 0, tzinfo=timezone.utc)
     assert cal.is_open(inst)
 
 
 def test_forex_open_continuously_during_week() -> None:
-    cal = Calendar.for_exchange("FOREX")
+    cal = Calendar.from_exchange("FOREX")
     # Tuesday 08:00 UTC = 03:00 NY — continuous FX session.
     inst = datetime(2024, 1, 9, 8, 0, tzinfo=timezone.utc)
     assert cal.is_open(inst)
 
 
 def test_crypto_open_on_saturday() -> None:
-    cal = Calendar.for_exchange("CRYPTO")
+    cal = Calendar.from_exchange("CRYPTO")
     inst = datetime(2024, 1, 13, 3, 0, tzinfo=timezone.utc)
     assert cal.is_open(inst)
 
 
 def test_sifma_includes_columbus_and_veterans() -> None:
-    cal = Calendar.for_exchange("SIFMA_US")
+    cal = Calendar.from_exchange("SIFMA_US")
     assert cal.is_holiday(date(2024, 11, 11))  # Veterans Day
     assert cal.is_holiday(date(2024, 10, 14))  # Columbus Day
 
@@ -164,13 +253,13 @@ def test_all_exchange_codes_resolve() -> None:
     from finance_dates import EXCHANGE_CODES
 
     for code in EXCHANGE_CODES:
-        cal = Calendar.for_exchange(code)
+        cal = Calendar.from_exchange(code)
         assert cal.name.upper() == code.upper()
 
 
 def test_calendar_exposes_sessions_and_timezone() -> None:
-    cme = Calendar.for_exchange("XCME")
-    sessions = cme.sessions
+    cme = Calendar.from_exchange("XCME")
+    sessions = cme.regular_sessions
     assert len(sessions) == 1
     open_hh, open_mm, open_off, close_hh, close_mm, close_off = sessions[0]
     assert (open_hh, open_mm, open_off) == (17, 0, -1)
@@ -179,19 +268,19 @@ def test_calendar_exposes_sessions_and_timezone() -> None:
 
 
 def test_nyse_july3_2024_early_close() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     assert cal.early_close_for(date(2024, 7, 3)) == (13, 0)
     assert cal.early_close_for(date(2024, 7, 5)) is None
 
 
 def test_nyse_black_friday_early_close() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # 2024 Black Friday = Nov 29.
     assert cal.early_close_for(date(2024, 11, 29)) == (13, 0)
 
 
 def test_nyse_july3_closed_after_early_close() -> None:
-    cal = Calendar.for_exchange("XNYS")
+    cal = Calendar.from_exchange("XNYS")
     # 14:00 ET on July 3 2024 — should be closed (early close at 13:00).
     aware = datetime(2024, 7, 3, 18, 0, tzinfo=timezone.utc)  # 14:00 ET (EDT = UTC-4)
     assert cal.is_open(aware) is False
@@ -199,13 +288,13 @@ def test_nyse_july3_closed_after_early_close() -> None:
 
 def test_emea_and_latam_calendars_resolve() -> None:
     for code in ("XAMS", "XMIL", "XSWX", "XJSE", "XKRX", "XSAU", "BVMF", "XMEX"):
-        cal = Calendar.for_exchange(code)
+        cal = Calendar.from_exchange(code)
         assert cal.market_type == "equity"
         assert cal.timezone != ""
 
 
 def test_tase_uses_sun_thu_weekmask() -> None:
-    cal = Calendar.for_exchange("XTAE")
+    cal = Calendar.from_exchange("XTAE")
     # Monday → Sunday; weekmask[0..6] = [Mon..Sun].
     # Fri = idx 4 → False, Sun = idx 6 → True.
     wm = cal.weekmask
@@ -214,34 +303,34 @@ def test_tase_uses_sun_thu_weekmask() -> None:
 
 
 def test_korean_seollal_2024_multi_day_holiday() -> None:
-    cal = Calendar.for_exchange("XKRX")
+    cal = Calendar.from_exchange("XKRX")
     assert cal.is_holiday(date(2024, 2, 9)) is True
     assert cal.is_holiday(date(2024, 2, 12)) is True
 
 
 def test_region_br_and_kr_resolve() -> None:
-    assert Calendar.for_region("BR").name == "BVMF"
-    assert Calendar.for_region("KR").name == "XKRX"
+    assert Calendar.from_region("BR").name == "BVMF"
+    assert Calendar.from_region("KR").name == "XKRX"
 
 
 def test_business_day_series_method() -> None:
-    cal = Calendar.for_exchange("XNYS")
-    days = cal.business_day_range(date(2024, 7, 1), date(2024, 7, 5))
+    cal = Calendar.from_exchange("XNYS")
+    days = cal.business_days(date(2024, 7, 1), date(2024, 7, 5))
     # Jul 4 (Thu) is a holiday → 4 business days.
     assert days == [date(2024, 7, 1), date(2024, 7, 2), date(2024, 7, 3), date(2024, 7, 5)]
 
 
-def test_holidays_between_q3_2024() -> None:
-    cal = Calendar.for_exchange("XNYS")
-    h = cal.holidays_between(date(2024, 7, 1), date(2024, 9, 30))
+def test_holidays_q3_2024() -> None:
+    cal = Calendar.from_exchange("XNYS")
+    h = cal.holidays(date(2024, 7, 1), date(2024, 9, 30))
     assert date(2024, 7, 4) in h
     assert date(2024, 9, 2) in h
     assert len(h) == 2
 
 
-def test_sessions_between_includes_early_close() -> None:
-    cal = Calendar.for_exchange("XNYS")
-    sess = cal.sessions_between(date(2024, 7, 1), date(2024, 7, 5))
+def test_sessions_include_early_close() -> None:
+    cal = Calendar.from_exchange("XNYS")
+    sess = cal.sessions(date(2024, 7, 1), date(2024, 7, 5))
     # 4 business days × 1 session each.
     assert len(sess) == 4
     # Jul 3 close (third entry) is at 13:00 ET = 17:00 UTC during EDT.

@@ -11,4 +11,4 @@ pub use calendar::{
 };
 pub use holiday::{HolidayRule, Weekday};
 pub use range::{business_day_range, date_range, STANDARD_WEEKMASK};
-pub use trading_hours::{Session, TradingHours};
+pub use trading_hours::{ExtendedSession, Session, TradingHours};

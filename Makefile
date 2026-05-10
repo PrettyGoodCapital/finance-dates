@@ -117,6 +117,19 @@ coverage: coverage-py coverage-rs  ## run all tests and collect test coverage
 # alias
 tests: test
 
+########
+# DOCS #
+########
+.PHONY: docs docs-serve docs-clean
+docs:  ## build sphinx documentation via yardang
+	yardang build
+
+docs-serve:  ## build and locally serve the docs
+	yardang serve
+
+docs-clean:  ## remove built documentation
+	rm -rf _build docs/_build site
+
 ###########
 # VERSION #
 ###########

@@ -14,7 +14,7 @@ use crate::range::{
     business_day_range, business_days_between, next_business_day, previous_business_day,
     STANDARD_WEEKMASK,
 };
-use crate::trading_hours::{Session, TradingHours};
+use crate::trading_hours::{ExtendedSession, Session, TradingHours};
 
 pub use finance_enums::data::ExchangeCode_VARIANTS as EXCHANGE_CODES;
 
@@ -374,6 +374,56 @@ impl Calendar {
         }
         out
     }
+
+    /// Named non-regular trading windows for every business day in
+    /// `[start, end]` (inclusive), such as pre-open and after-close.
+    pub fn extended_sessions_between(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+    ) -> Vec<(&'static str, DateTime<Utc>, DateTime<Utc>)> {
+        let Some(th) = &self.trading_hours else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        let mut d = start;
+        while d <= end {
+            if self.is_business_day(d) {
+                let early = self.early_close_for(d);
+                for s in &th.extended_sessions {
+                    let Some((mut o, c)) = s.session.instants(th.timezone, d) else {
+                        continue;
+                    };
+                    if s.name == "after_close" {
+                        if let Some(t) = early {
+                            if let Some(early_o) = adjust_open(th.timezone, d, &s.session, t) {
+                                o = early_o;
+                            }
+                        }
+                    }
+                    if o < c {
+                        out.push((s.name, o, c));
+                    }
+                }
+            }
+            d += Duration::days(1);
+        }
+        out
+    }
+}
+
+fn adjust_open(
+    tz: chrono_tz::Tz,
+    trading_day: NaiveDate,
+    session: &Session,
+    local_open_time: NaiveTime,
+) -> Option<DateTime<Utc>> {
+    use chrono::TimeZone;
+    let open_local_day = trading_day + Duration::days(session.open_day_offset as i64);
+    let open = tz
+        .from_local_datetime(&open_local_day.and_time(local_open_time))
+        .single()?;
+    Some(open.with_timezone(&Utc))
 }
 
 /// Recompute the close instant of `session` on `trading_day` using the
@@ -452,6 +502,22 @@ fn nyse_trading_hours() -> TradingHours {
         NaiveTime::from_hms_opt(16, 0, 0).unwrap(),
         chrono_tz::America::New_York,
     )
+    .with_extended_sessions(vec![
+        ExtendedSession::new(
+            "pre_open",
+            Session::regular(
+                NaiveTime::from_hms_opt(4, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(9, 30, 0).unwrap(),
+            ),
+        ),
+        ExtendedSession::new(
+            "after_close",
+            Session::regular(
+                NaiveTime::from_hms_opt(16, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(20, 0, 0).unwrap(),
+            ),
+        ),
+    ])
 }
 
 /// Listed options use the same holidays as NYSE; market hours run from 09:30
@@ -2850,6 +2916,53 @@ mod tests {
         // Jul 5 close (4th entry) should be 16:00 ET (regular).
         let jul5_close_local = s[3].1.with_timezone(&chrono_tz::America::New_York);
         assert_eq!(jul5_close_local.hour(), 16);
+    }
+
+    #[test]
+    fn nyse_extended_sessions_include_pre_open_and_after_close() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        let s = cal.extended_sessions_between(
+            NaiveDate::from_ymd_opt(2024, 1, 8).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 1, 8).unwrap(),
+        );
+        assert_eq!(s.len(), 2);
+        assert_eq!(s[0].0, "pre_open");
+        assert_eq!(s[1].0, "after_close");
+
+        let pre_open_local = s[0].1.with_timezone(&chrono_tz::America::New_York);
+        let pre_close_local = s[0].2.with_timezone(&chrono_tz::America::New_York);
+        assert_eq!((pre_open_local.hour(), pre_open_local.minute()), (4, 0));
+        assert_eq!((pre_close_local.hour(), pre_close_local.minute()), (9, 30));
+
+        let after_open_local = s[1].1.with_timezone(&chrono_tz::America::New_York);
+        let after_close_local = s[1].2.with_timezone(&chrono_tz::America::New_York);
+        assert_eq!(
+            (after_open_local.hour(), after_open_local.minute()),
+            (16, 0)
+        );
+        assert_eq!(
+            (after_close_local.hour(), after_close_local.minute()),
+            (20, 0)
+        );
+    }
+
+    #[test]
+    fn nyse_after_close_starts_at_early_close() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        let s = cal.extended_sessions_between(
+            NaiveDate::from_ymd_opt(2024, 7, 3).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 7, 3).unwrap(),
+        );
+        let after_open_local = s[1].1.with_timezone(&chrono_tz::America::New_York);
+        let after_close_local = s[1].2.with_timezone(&chrono_tz::America::New_York);
+        assert_eq!(
+            (after_open_local.hour(), after_open_local.minute()),
+            (13, 0)
+        );
+        assert_eq!(
+            (after_close_local.hour(), after_close_local.minute()),
+            (20, 0)
+        );
     }
 
     #[test]
