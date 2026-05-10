@@ -30,13 +30,23 @@ pub struct Session {
 
 impl Session {
     pub const fn regular(open: NaiveTime, close: NaiveTime) -> Self {
-        Self { open, open_day_offset: 0, close, close_day_offset: 0 }
+        Self {
+            open,
+            open_day_offset: 0,
+            close,
+            close_day_offset: 0,
+        }
     }
 
     /// A session whose open is on the previous calendar day, close on the
     /// trading day itself (the common futures pattern).
     pub const fn overnight(open: NaiveTime, close: NaiveTime) -> Self {
-        Self { open, open_day_offset: -1, close, close_day_offset: 0 }
+        Self {
+            open,
+            open_day_offset: -1,
+            close,
+            close_day_offset: 0,
+        }
     }
 
     /// Convert this session into a UTC `(open, close)` pair given a trading
@@ -48,8 +58,12 @@ impl Session {
     ) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
         let open_local = trading_day + Duration::days(self.open_day_offset as i64);
         let close_local = trading_day + Duration::days(self.close_day_offset as i64);
-        let open = tz.from_local_datetime(&open_local.and_time(self.open)).single()?;
-        let close = tz.from_local_datetime(&close_local.and_time(self.close)).single()?;
+        let open = tz
+            .from_local_datetime(&open_local.and_time(self.open))
+            .single()?;
+        let close = tz
+            .from_local_datetime(&close_local.and_time(self.close))
+            .single()?;
         Some((open.with_timezone(&Utc), close.with_timezone(&Utc)))
     }
 }
@@ -64,7 +78,10 @@ pub struct TradingHours {
 impl TradingHours {
     /// Single regular session (open and close on the trading day).
     pub fn new(open: NaiveTime, close: NaiveTime, timezone: Tz) -> Self {
-        Self { sessions: vec![Session::regular(open, close)], timezone }
+        Self {
+            sessions: vec![Session::regular(open, close)],
+            timezone,
+        }
     }
 
     pub fn from_sessions(sessions: Vec<Session>, timezone: Tz) -> Self {

@@ -7,9 +7,9 @@ from datetime import date, datetime, timezone
 import pytest
 
 from finance_dates import (
-    Calendar,
     EXCHANGE_CODES,
     REGION_CODES,
+    Calendar,
     business_day_range,
     date_range,
 )
@@ -162,6 +162,7 @@ def test_sifma_includes_columbus_and_veterans() -> None:
 
 def test_all_exchange_codes_resolve() -> None:
     from finance_dates import EXCHANGE_CODES
+
     for code in EXCHANGE_CODES:
         cal = Calendar.for_exchange(code)
         assert cal.name.upper() == code.upper()

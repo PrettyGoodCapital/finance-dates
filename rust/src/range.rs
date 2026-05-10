@@ -44,8 +44,7 @@ pub fn business_day_range(
 }
 
 /// Standard Mon–Fri weekmask.
-pub const STANDARD_WEEKMASK: [bool; 7] =
-    [true, true, true, true, true, false, false];
+pub const STANDARD_WEEKMASK: [bool; 7] = [true, true, true, true, true, false, false];
 
 /// Move to the next business day strictly after `d`.
 pub fn next_business_day(

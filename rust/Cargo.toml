@@ -16,6 +16,7 @@ crate-type = ["rlib"]
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 chrono-tz = { version = "0.10", default-features = false }
+finance_enums = "0.3.0"
 once_cell = "1"
 
 [profile.test.junit]

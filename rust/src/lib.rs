@@ -1,8 +1,8 @@
 //! Fast date-range, holiday-calendar, and trading-hour utilities.
 
+pub mod calendar;
 pub mod holiday;
 pub mod range;
-pub mod calendar;
 pub mod trading_hours;
 
 pub use calendar::{

@@ -16,6 +16,8 @@ use crate::range::{
 };
 use crate::trading_hours::{Session, TradingHours};
 
+pub use finance_enums::data::ExchangeCode_VARIANTS as EXCHANGE_CODES;
+
 /// The class of instrument a calendar represents.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MarketType {
@@ -55,51 +57,11 @@ pub const CRYPTO_WEEKMASK: [bool; 7] = [true, true, true, true, true, true, true
 /// Sun-Fri weekmask used by 24x5 FX. Monday=index 0; Sunday=index 6.
 pub const FX_WEEKMASK: [bool; 7] = [true, true, true, true, true, false, true];
 
-/// All MIC codes recognised by `calendar_for_exchange`.
-pub const EXCHANGE_CODES: &[&str] = &[
-    // US equities (NYSE family)
-    "XNYS", "NYSD", "XCIS", "CISD", "XCHI", "ARCX", "ARCD", "ARCO", "XASE", "AMXO",
-    "XNAS", "XNGS", "XNCM", "XNMS", "NASD", "XNDQ",
-    "XBOS", "BOSD", "XBXO", "XPHL", "XPSX", "PSXD", "XPHO", "XPBT", "XPOR", "XNFI",
-    "EDGA", "EDGD", "EDGX", "EDDP", "EDGO",
-    "BATS", "BZXD", "BATO", "BATY", "BYXD",
-    "MEMX", "MEMD", "IEXG", "LTSE",
-    "MIHI", "MPRL", "EPRL", "EPRD", "XMIO", "EMLD",
-    // US options
-    "XISE", "GMNI", "MCRY", "XCBO", "C2OX", "MXOP", "OPRA",
-    // OTC / FINRA
-    "OTCM", "CAVE", "OTCB", "OTCQ", "PINL", "PINI", "PINX", "PSGM", "PINC",
-    "FINR", "FINN", "FINC", "FINY", "XADF", "FINO", "OOTC",
-    // US futures (CME group)
-    "XCME", "FCME", "GLBX", "XCBT", "FCBT", "XKBT", "XNYM",
-    // Canada
-    "XTSE", "XDRK", "VDRK", "XTSX", "XTNX", "XATS", "XATX", "ADRK", "XMOD", "XMOC",
-    "NEOE", "NEOD", "NEON", "NEOC", "XCNQ", "PURE", "CSE2",
-    // Major non-US equities
-    "XLON", "XTKS", "XHKG", "XSHG", "XEUR", "XPAR", "XFRA", "XASX", "XBOM", "XNSE",
-    // Europe (additional)
-    "XAMS", "XBRU", "XLIS", "XMIL", "XMAD", "XSWX", "XOSL", "XSTO", "XHEL",
-    "XCSE", "XICE", "XWAR", "XPRA", "XBUD", "XWBO", "XDUB",
-    // Asia / Pacific
-    "XKRX", "XSES", "XTAI", "XBKK", "XKLS", "XIDX", "XPHS", "XNZE",
-    // EMEA
-    "XJSE", "XSAU", "XIST", "XTAE", "XDFM", "XADS",
-    // LatAm
-    "BVMF", "XMEX", "XBUE", "XSGO", "XLIM", "XBOG",
-    // Synthetic / placeholder
-    "XXXX", "PYPR", "SIMU",
-    // Generic market families
-    "FOREX", "CRYPTO", "SIFMA_US", "ICE_US", "CFE",
-];
-
 /// ISO region codes recognised by `calendar_for_region`.
 pub const REGION_CODES: &[&str] = &[
-    "US", "UK", "GB", "EU", "JP", "HK", "CN", "CA", "AU", "IN", "DE", "FR",
-    "NL", "BE", "PT", "IT", "ES", "CH", "NO", "SE", "FI", "DK", "IS",
-    "PL", "CZ", "HU", "AT", "IE",
-    "KR", "SG", "TW", "TH", "MY", "ID", "PH", "NZ",
-    "ZA", "SA", "TR", "IL", "AE",
-    "BR", "MX", "AR", "CL", "PE", "CO",
+    "US", "UK", "GB", "EU", "JP", "HK", "CN", "CA", "AU", "IN", "DE", "FR", "NL", "BE", "PT", "IT",
+    "ES", "CH", "NO", "SE", "FI", "DK", "IS", "PL", "CZ", "HU", "AT", "IE", "KR", "SG", "TW", "TH",
+    "MY", "ID", "PH", "NZ", "ZA", "SA", "TR", "IL", "AE", "BR", "MX", "AR", "CL", "PE", "CO",
 ];
 
 /// A holiday calendar with optional trading hours and a market classification.
@@ -297,7 +259,9 @@ impl Calendar {
     /// early-close is in effect for that trading day, the last session's
     /// close is shortened.
     pub fn is_open(&self, when: DateTime<Utc>) -> bool {
-        let Some(th) = &self.trading_hours else { return false };
+        let Some(th) = &self.trading_hours else {
+            return false;
+        };
         let local_today = when.with_timezone(&th.timezone).date_naive();
         for delta in [0i64, 1] {
             let trading_day = local_today + Duration::days(delta);
@@ -383,7 +347,9 @@ impl Calendar {
         start: NaiveDate,
         end: NaiveDate,
     ) -> Vec<(DateTime<Utc>, DateTime<Utc>)> {
-        let Some(th) = &self.trading_hours else { return Vec::new() };
+        let Some(th) = &self.trading_hours else {
+            return Vec::new();
+        };
         let mut out = Vec::new();
         let last_idx = th.sessions.len().saturating_sub(1);
         let mut d = start;
@@ -430,19 +396,37 @@ fn adjust_close(
 // ---------- Holiday rule constructors ----------
 
 fn fixed(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
-    HolidayRule::Fixed { month, day, roll: WeekendRoll::NearestWeekday, since_year }
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::NearestWeekday,
+        since_year,
+    }
 }
 
 fn fixed_no_roll(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
-    HolidayRule::Fixed { month, day, roll: WeekendRoll::None, since_year }
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::None,
+        since_year,
+    }
 }
 
 fn nth(month: u32, weekday: Weekday, n: i32) -> HolidayRule {
-    HolidayRule::NthWeekday { month, weekday, n, since_year: None }
+    HolidayRule::NthWeekday {
+        month,
+        weekday,
+        n,
+        since_year: None,
+    }
 }
 
 fn easter(offset_days: i32) -> HolidayRule {
-    HolidayRule::EasterOffset { offset_days, since_year: None }
+    HolidayRule::EasterOffset {
+        offset_days,
+        since_year: None,
+    }
 }
 
 // ---------- Built-in calendars ----------
@@ -486,11 +470,7 @@ fn options_trading_hours() -> TradingHours {
 /// (Memorial Day, Independence Day, Thanksgiving, …) are typically partial
 /// closes / early closes which this layer does not yet model.
 fn cme_globex_rules() -> Vec<HolidayRule> {
-    vec![
-        fixed(1, 1, None),
-        easter(-2),
-        fixed(12, 25, None),
-    ]
+    vec![fixed(1, 1, None), easter(-2), fixed(12, 25, None)]
 }
 
 /// CME Globex equity-index, FX, fixed-income futures: 17:00 prev — 16:00 today CT.
@@ -645,9 +625,17 @@ fn tse_trading_hours() -> TradingHours {
 
 fn hkex_rules() -> Vec<HolidayRule> {
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27), (2021, 2, 12), (2022, 2, 1), (2023, 1, 23),
-        (2024, 2, 12), (2025, 1, 29), (2026, 2, 17), (2027, 2, 8),
-        (2028, 1, 26), (2029, 2, 13), (2030, 2, 4),
+        (2020, 1, 27),
+        (2021, 2, 12),
+        (2022, 2, 1),
+        (2023, 1, 23),
+        (2024, 2, 12),
+        (2025, 1, 29),
+        (2026, 2, 17),
+        (2027, 2, 8),
+        (2028, 1, 26),
+        (2029, 2, 13),
+        (2030, 2, 4),
     ];
     vec![
         fixed(1, 1, None),
@@ -672,9 +660,17 @@ fn hkex_trading_hours() -> TradingHours {
 
 fn sse_rules() -> Vec<HolidayRule> {
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 25), (2021, 2, 12), (2022, 2, 1), (2023, 1, 22),
-        (2024, 2, 10), (2025, 1, 29), (2026, 2, 17), (2027, 2, 6),
-        (2028, 1, 26), (2029, 2, 13), (2030, 2, 3),
+        (2020, 1, 25),
+        (2021, 2, 12),
+        (2022, 2, 1),
+        (2023, 1, 22),
+        (2024, 2, 10),
+        (2025, 1, 29),
+        (2026, 2, 17),
+        (2027, 2, 6),
+        (2028, 1, 26),
+        (2029, 2, 13),
+        (2030, 2, 3),
     ];
     vec![
         fixed(1, 1, None),
@@ -815,13 +811,31 @@ fn nyse_early_closes() -> Vec<EarlyCloseRule> {
     // Black Friday is the day after the 4th Thursday of November (i.e.
     // Thanksgiving + 1). Tabulated through 2035 — easily extended.
     static BLACK_FRIDAY: &[(i32, u32, u32)] = &[
-        (2020, 11, 27), (2021, 11, 26), (2022, 11, 25), (2023, 11, 24),
-        (2024, 11, 29), (2025, 11, 28), (2026, 11, 27), (2027, 11, 26),
-        (2028, 11, 24), (2029, 11, 23), (2030, 11, 29), (2031, 11, 28),
-        (2032, 11, 26), (2033, 11, 25), (2034, 11, 24), (2035, 11, 23),
+        (2020, 11, 27),
+        (2021, 11, 26),
+        (2022, 11, 25),
+        (2023, 11, 24),
+        (2024, 11, 29),
+        (2025, 11, 28),
+        (2026, 11, 27),
+        (2027, 11, 26),
+        (2028, 11, 24),
+        (2029, 11, 23),
+        (2030, 11, 29),
+        (2031, 11, 28),
+        (2032, 11, 26),
+        (2033, 11, 25),
+        (2034, 11, 24),
+        (2035, 11, 23),
     ];
     vec![
-        ec(HolidayRule::Tabulated { table: BLACK_FRIDAY }, 13, 0),
+        ec(
+            HolidayRule::Tabulated {
+                table: BLACK_FRIDAY,
+            },
+            13,
+            0,
+        ),
         ec(fixed_no_roll(12, 24, None), 13, 0),
         ec(fixed_no_roll(7, 3, None), 13, 0),
     ]
@@ -1245,33 +1259,54 @@ fn xkrx_rules() -> Vec<HolidayRule> {
     // Korea Exchange: tabulated lunar holidays (Seollal, Chuseok). For
     // accuracy these are baked in as lookup tables 2020-2030.
     let seollal: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 24), (2020, 1, 27),
-        (2021, 2, 11), (2021, 2, 12),
-        (2022, 1, 31), (2022, 2, 1), (2022, 2, 2),
-        (2023, 1, 23), (2023, 1, 24),
-        (2024, 2, 9), (2024, 2, 12),
-        (2025, 1, 28), (2025, 1, 29), (2025, 1, 30),
-        (2026, 2, 16), (2026, 2, 17), (2026, 2, 18),
+        (2020, 1, 24),
+        (2020, 1, 27),
+        (2021, 2, 11),
+        (2021, 2, 12),
+        (2022, 1, 31),
+        (2022, 2, 1),
+        (2022, 2, 2),
+        (2023, 1, 23),
+        (2023, 1, 24),
+        (2024, 2, 9),
+        (2024, 2, 12),
+        (2025, 1, 28),
+        (2025, 1, 29),
+        (2025, 1, 30),
+        (2026, 2, 16),
+        (2026, 2, 17),
+        (2026, 2, 18),
     ];
     let chuseok: &'static [(i32, u32, u32)] = &[
-        (2020, 9, 30), (2020, 10, 1), (2020, 10, 2),
-        (2021, 9, 20), (2021, 9, 21), (2021, 9, 22),
-        (2022, 9, 9), (2022, 9, 12),
-        (2023, 9, 28), (2023, 9, 29),
-        (2024, 9, 16), (2024, 9, 17), (2024, 9, 18),
-        (2025, 10, 6), (2025, 10, 7), (2025, 10, 8),
-        (2026, 9, 24), (2026, 9, 25),
+        (2020, 9, 30),
+        (2020, 10, 1),
+        (2020, 10, 2),
+        (2021, 9, 20),
+        (2021, 9, 21),
+        (2021, 9, 22),
+        (2022, 9, 9),
+        (2022, 9, 12),
+        (2023, 9, 28),
+        (2023, 9, 29),
+        (2024, 9, 16),
+        (2024, 9, 17),
+        (2024, 9, 18),
+        (2025, 10, 6),
+        (2025, 10, 7),
+        (2025, 10, 8),
+        (2026, 9, 24),
+        (2026, 9, 25),
     ];
     vec![
         fixed(1, 1, None),
         HolidayRule::Tabulated { table: seollal },
-        fixed_no_roll(3, 1, None),       // Independence Movement
-        fixed_no_roll(5, 5, None),       // Children's Day
-        fixed_no_roll(6, 6, None),       // Memorial Day
-        fixed_no_roll(8, 15, None),      // Liberation Day
+        fixed_no_roll(3, 1, None),  // Independence Movement
+        fixed_no_roll(5, 5, None),  // Children's Day
+        fixed_no_roll(6, 6, None),  // Memorial Day
+        fixed_no_roll(8, 15, None), // Liberation Day
         HolidayRule::Tabulated { table: chuseok },
-        fixed_no_roll(10, 3, None),      // National Foundation
-        fixed_no_roll(10, 9, None),      // Hangul Day
+        fixed_no_roll(10, 3, None), // National Foundation
+        fixed_no_roll(10, 9, None), // Hangul Day
         fixed(12, 25, None),
     ]
 }
@@ -1289,12 +1324,22 @@ fn xses_rules() -> Vec<HolidayRule> {
     // Labour, Vesak Day (varies), National Day (Aug 9), Christmas. Vesak
     // and others use simplified handling.
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 24), (2021, 2, 12), (2022, 2, 1), (2023, 1, 23),
-        (2024, 2, 12), (2025, 1, 29), (2026, 2, 17),
+        (2020, 1, 24),
+        (2021, 2, 12),
+        (2022, 2, 1),
+        (2023, 1, 23),
+        (2024, 2, 12),
+        (2025, 1, 29),
+        (2026, 2, 17),
     ];
     let lny2: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27), (2021, 2, 15), (2022, 2, 2), (2023, 1, 24),
-        (2024, 2, 13), (2025, 1, 30), (2026, 2, 18),
+        (2020, 1, 27),
+        (2021, 2, 15),
+        (2022, 2, 2),
+        (2023, 1, 24),
+        (2024, 2, 13),
+        (2025, 1, 30),
+        (2026, 2, 18),
     ];
     vec![
         fixed(1, 1, None),
@@ -1320,17 +1365,22 @@ fn xtai_rules() -> Vec<HolidayRule> {
     // Day (Apr 4), Tomb Sweeping (Apr 5), Dragon Boat, Mid-Autumn, ROC
     // National (Oct 10).
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 23), (2021, 2, 8), (2022, 1, 27), (2023, 1, 19),
-        (2024, 2, 5), (2025, 1, 23), (2026, 2, 13),
+        (2020, 1, 23),
+        (2021, 2, 8),
+        (2022, 1, 27),
+        (2023, 1, 19),
+        (2024, 2, 5),
+        (2025, 1, 23),
+        (2026, 2, 13),
     ];
     vec![
         fixed(1, 1, None),
         HolidayRule::Tabulated { table: lny },
-        fixed_no_roll(2, 28, None),      // Peace Memorial
-        fixed_no_roll(4, 4, None),       // Children's
-        fixed_no_roll(4, 5, None),       // Tomb Sweeping
+        fixed_no_roll(2, 28, None), // Peace Memorial
+        fixed_no_roll(4, 4, None),  // Children's
+        fixed_no_roll(4, 5, None),  // Tomb Sweeping
         fixed(5, 1, None),
-        fixed_no_roll(10, 10, None),     // ROC National
+        fixed_no_roll(10, 10, None), // ROC National
     ]
 }
 
@@ -1377,8 +1427,13 @@ fn xkls_rules() -> Vec<HolidayRule> {
     // Agong's Birthday (1st Mon Jun), National (Aug 31), Malaysia Day
     // (Sep 16), Christmas. Eid/Hari Raya are tabulated.
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27), (2021, 2, 12), (2022, 2, 1), (2023, 1, 23),
-        (2024, 2, 12), (2025, 1, 29), (2026, 2, 17),
+        (2020, 1, 27),
+        (2021, 2, 12),
+        (2022, 2, 1),
+        (2023, 1, 23),
+        (2024, 2, 12),
+        (2025, 1, 29),
+        (2026, 2, 17),
     ];
     vec![
         fixed(1, 1, None),
@@ -1403,8 +1458,13 @@ fn xidx_rules() -> Vec<HolidayRule> {
     // Indonesia: NY, Lunar NY, Labour, Pancasila (Jun 1), Independence
     // (Aug 17), Christmas. Religious dates simplified.
     let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27), (2021, 2, 12), (2022, 2, 1), (2023, 1, 23),
-        (2024, 2, 8), (2025, 1, 29), (2026, 2, 17),
+        (2020, 1, 27),
+        (2021, 2, 12),
+        (2022, 2, 1),
+        (2023, 1, 23),
+        (2024, 2, 8),
+        (2025, 1, 29),
+        (2026, 2, 17),
     ];
     vec![
         fixed(1, 1, None),
@@ -1519,12 +1579,22 @@ fn xsau_rules() -> Vec<HolidayRule> {
     // Saudi Tadawul: National Day (Sep 23), Founding Day (Feb 22). Eid
     // dates vary by lunar calendar — kept tabulated for accuracy 2020-2026.
     let eid_fitr: &'static [(i32, u32, u32)] = &[
-        (2020, 5, 24), (2021, 5, 13), (2022, 5, 2), (2023, 4, 21),
-        (2024, 4, 10), (2025, 3, 30), (2026, 3, 20),
+        (2020, 5, 24),
+        (2021, 5, 13),
+        (2022, 5, 2),
+        (2023, 4, 21),
+        (2024, 4, 10),
+        (2025, 3, 30),
+        (2026, 3, 20),
     ];
     let eid_adha: &'static [(i32, u32, u32)] = &[
-        (2020, 7, 31), (2021, 7, 20), (2022, 7, 9), (2023, 6, 28),
-        (2024, 6, 16), (2025, 6, 6), (2026, 5, 27),
+        (2020, 7, 31),
+        (2021, 7, 20),
+        (2022, 7, 9),
+        (2023, 6, 28),
+        (2024, 6, 16),
+        (2025, 6, 6),
+        (2026, 5, 27),
     ];
     vec![
         fixed_no_roll(2, 22, Some(2022)),
@@ -1547,12 +1617,22 @@ fn xist_rules() -> Vec<HolidayRule> {
     // Commemoration of Atatürk (May 19), Democracy (Jul 15), Victory (Aug 30),
     // Republic (Oct 29). Eid dates vary; tabulated.
     let eid_fitr: &'static [(i32, u32, u32)] = &[
-        (2020, 5, 24), (2021, 5, 13), (2022, 5, 2), (2023, 4, 21),
-        (2024, 4, 10), (2025, 3, 30), (2026, 3, 20),
+        (2020, 5, 24),
+        (2021, 5, 13),
+        (2022, 5, 2),
+        (2023, 4, 21),
+        (2024, 4, 10),
+        (2025, 3, 30),
+        (2026, 3, 20),
     ];
     let eid_adha: &'static [(i32, u32, u32)] = &[
-        (2020, 7, 31), (2021, 7, 20), (2022, 7, 9), (2023, 6, 28),
-        (2024, 6, 16), (2025, 6, 6), (2026, 5, 27),
+        (2020, 7, 31),
+        (2021, 7, 20),
+        (2022, 7, 9),
+        (2023, 6, 28),
+        (2024, 6, 16),
+        (2025, 6, 6),
+        (2026, 5, 27),
     ];
     vec![
         fixed(1, 1, None),
@@ -1583,38 +1663,77 @@ fn xtae_rules() -> Vec<HolidayRule> {
     // Rosh Hashanah, Yom Kippur, Sukkot, Simchat Torah, Independence Day).
     // Tabulated 2020-2026.
     let purim: &'static [(i32, u32, u32)] = &[
-        (2020, 3, 10), (2021, 2, 26), (2022, 3, 17), (2023, 3, 7),
-        (2024, 3, 24), (2025, 3, 14), (2026, 3, 3),
+        (2020, 3, 10),
+        (2021, 2, 26),
+        (2022, 3, 17),
+        (2023, 3, 7),
+        (2024, 3, 24),
+        (2025, 3, 14),
+        (2026, 3, 3),
     ];
     let passover_eve: &'static [(i32, u32, u32)] = &[
-        (2020, 4, 8), (2021, 3, 27), (2022, 4, 15), (2023, 4, 5),
-        (2024, 4, 22), (2025, 4, 12), (2026, 4, 1),
+        (2020, 4, 8),
+        (2021, 3, 27),
+        (2022, 4, 15),
+        (2023, 4, 5),
+        (2024, 4, 22),
+        (2025, 4, 12),
+        (2026, 4, 1),
     ];
     let shavuot: &'static [(i32, u32, u32)] = &[
-        (2020, 5, 29), (2021, 5, 17), (2022, 6, 5), (2023, 5, 26),
-        (2024, 6, 12), (2025, 6, 2), (2026, 5, 22),
+        (2020, 5, 29),
+        (2021, 5, 17),
+        (2022, 6, 5),
+        (2023, 5, 26),
+        (2024, 6, 12),
+        (2025, 6, 2),
+        (2026, 5, 22),
     ];
     let rosh: &'static [(i32, u32, u32)] = &[
-        (2020, 9, 19), (2021, 9, 7), (2022, 9, 26), (2023, 9, 16),
-        (2024, 10, 3), (2025, 9, 23), (2026, 9, 12),
+        (2020, 9, 19),
+        (2021, 9, 7),
+        (2022, 9, 26),
+        (2023, 9, 16),
+        (2024, 10, 3),
+        (2025, 9, 23),
+        (2026, 9, 12),
     ];
     let yom_kippur: &'static [(i32, u32, u32)] = &[
-        (2020, 9, 28), (2021, 9, 16), (2022, 10, 5), (2023, 9, 25),
-        (2024, 10, 12), (2025, 10, 2), (2026, 9, 21),
+        (2020, 9, 28),
+        (2021, 9, 16),
+        (2022, 10, 5),
+        (2023, 9, 25),
+        (2024, 10, 12),
+        (2025, 10, 2),
+        (2026, 9, 21),
     ];
     let sukkot: &'static [(i32, u32, u32)] = &[
-        (2020, 10, 3), (2021, 9, 21), (2022, 10, 10), (2023, 9, 30),
-        (2024, 10, 17), (2025, 10, 7), (2026, 9, 26),
+        (2020, 10, 3),
+        (2021, 9, 21),
+        (2022, 10, 10),
+        (2023, 9, 30),
+        (2024, 10, 17),
+        (2025, 10, 7),
+        (2026, 9, 26),
     ];
     let independence: &'static [(i32, u32, u32)] = &[
-        (2020, 4, 29), (2021, 4, 15), (2022, 5, 5), (2023, 4, 26),
-        (2024, 5, 14), (2025, 5, 1), (2026, 4, 22),
+        (2020, 4, 29),
+        (2021, 4, 15),
+        (2022, 5, 5),
+        (2023, 4, 26),
+        (2024, 5, 14),
+        (2025, 5, 1),
+        (2026, 4, 22),
     ];
     vec![
         HolidayRule::Tabulated { table: purim },
-        HolidayRule::Tabulated { table: passover_eve },
+        HolidayRule::Tabulated {
+            table: passover_eve,
+        },
         HolidayRule::Tabulated { table: shavuot },
-        HolidayRule::Tabulated { table: independence },
+        HolidayRule::Tabulated {
+            table: independence,
+        },
         HolidayRule::Tabulated { table: rosh },
         HolidayRule::Tabulated { table: yom_kippur },
         HolidayRule::Tabulated { table: sukkot },
@@ -1633,12 +1752,22 @@ fn xdfm_rules() -> Vec<HolidayRule> {
     // Dubai Financial Market / ADX: NY, UAE National (Dec 2-3),
     // Commemoration (Nov 30). Eid tabulated.
     let eid_fitr: &'static [(i32, u32, u32)] = &[
-        (2020, 5, 24), (2021, 5, 13), (2022, 5, 2), (2023, 4, 21),
-        (2024, 4, 10), (2025, 3, 30), (2026, 3, 20),
+        (2020, 5, 24),
+        (2021, 5, 13),
+        (2022, 5, 2),
+        (2023, 4, 21),
+        (2024, 4, 10),
+        (2025, 3, 30),
+        (2026, 3, 20),
     ];
     let eid_adha: &'static [(i32, u32, u32)] = &[
-        (2020, 7, 31), (2021, 7, 20), (2022, 7, 9), (2023, 6, 28),
-        (2024, 6, 16), (2025, 6, 6), (2026, 5, 27),
+        (2020, 7, 31),
+        (2021, 7, 20),
+        (2022, 7, 9),
+        (2023, 6, 28),
+        (2024, 6, 16),
+        (2025, 6, 6),
+        (2026, 5, 27),
     ];
     vec![
         fixed(1, 1, None),
@@ -1988,187 +2117,377 @@ fn build_family(name: &str, fam: Family) -> Calendar {
     use Family::*;
     match fam {
         UsEquity => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, nyse_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            nyse_rules(),
             Some(nyse_trading_hours()),
         )
         .with_early_closes(nyse_early_closes()),
         UsOptions => Calendar::with_type(
-            name, MarketType::Options, STANDARD_WEEKMASK, nyse_rules(),
+            name,
+            MarketType::Options,
+            STANDARD_WEEKMASK,
+            nyse_rules(),
             Some(options_trading_hours()),
         )
         .with_early_closes(nyse_early_closes()),
         UsBondSifma => Calendar::with_type(
-            name, MarketType::Bond, STANDARD_WEEKMASK, sifma_us_rules(),
+            name,
+            MarketType::Bond,
+            STANDARD_WEEKMASK,
+            sifma_us_rules(),
             Some(sifma_us_hours()),
         ),
         UsFuturesCme => Calendar::with_type(
-            name, MarketType::Futures, STANDARD_WEEKMASK, cme_globex_rules(),
+            name,
+            MarketType::Futures,
+            STANDARD_WEEKMASK,
+            cme_globex_rules(),
             Some(cme_globex_overnight_hours()),
         ),
         UsFuturesCmeEnergy => Calendar::with_type(
-            name, MarketType::Futures, STANDARD_WEEKMASK, cme_globex_rules(),
+            name,
+            MarketType::Futures,
+            STANDARD_WEEKMASK,
+            cme_globex_rules(),
             Some(cme_globex_energy_hours()),
         ),
         UsFuturesIce => Calendar::with_type(
-            name, MarketType::Futures, STANDARD_WEEKMASK, ice_us_rules(),
+            name,
+            MarketType::Futures,
+            STANDARD_WEEKMASK,
+            ice_us_rules(),
             Some(ice_us_hours()),
         ),
         UsFuturesCfe => Calendar::with_type(
-            name, MarketType::Futures, STANDARD_WEEKMASK, cfe_rules(),
+            name,
+            MarketType::Futures,
+            STANDARD_WEEKMASK,
+            cfe_rules(),
             Some(cfe_trading_hours()),
         ),
         Forex24x5 => Calendar::with_type(
-            name, MarketType::Fx, STANDARD_WEEKMASK, forex_rules(),
+            name,
+            MarketType::Fx,
+            STANDARD_WEEKMASK,
+            forex_rules(),
             Some(TradingHours::forex_24x5()),
         ),
         Crypto24x7 => Calendar::with_type(
-            name, MarketType::Crypto, CRYPTO_WEEKMASK, crypto_rules(),
+            name,
+            MarketType::Crypto,
+            CRYPTO_WEEKMASK,
+            crypto_rules(),
             Some(TradingHours::crypto_24x7()),
         ),
         Lse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, lse_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            lse_rules(),
             Some(lse_trading_hours()),
         ),
         Tse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, tse_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            tse_rules(),
             Some(tse_trading_hours()),
         ),
         Hkex => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, hkex_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            hkex_rules(),
             Some(hkex_trading_hours()),
         ),
         Sse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, sse_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            sse_rules(),
             Some(sse_trading_hours()),
         ),
         Xetra => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xetra_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xetra_rules(),
             Some(xetra_trading_hours()),
         ),
         EuronextParis => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, euronext_paris_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            euronext_paris_rules(),
             Some(euronext_paris_trading_hours()),
         ),
         EuronextAms => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xams_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xams_rules(),
             Some(euronext_hours(chrono_tz::Europe::Amsterdam)),
         ),
         EuronextBru => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xbru_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xbru_rules(),
             Some(euronext_hours(chrono_tz::Europe::Brussels)),
         ),
         EuronextLis => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xlis_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xlis_rules(),
             Some(euronext_hours(chrono_tz::Europe::Lisbon)),
         ),
         EuronextDub => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xdub_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xdub_rules(),
             Some(xdub_hours()),
         ),
         Tsx => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, tsx_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            tsx_rules(),
             Some(tsx_trading_hours()),
         ),
         Asx => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, asx_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            asx_rules(),
             Some(asx_trading_hours()),
         ),
         Nse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, nse_rules(),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            nse_rules(),
             Some(nse_trading_hours()),
         ),
         Xmil => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xmil_rules(), Some(xmil_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xmil_rules(),
+            Some(xmil_hours()),
         ),
         Xmad => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xmad_rules(), Some(xmad_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xmad_rules(),
+            Some(xmad_hours()),
         ),
         Xswx => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xswx_rules(), Some(xswx_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xswx_rules(),
+            Some(xswx_hours()),
         ),
         Xosl => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xosl_rules(), Some(xosl_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xosl_rules(),
+            Some(xosl_hours()),
         ),
         Xsto => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xsto_rules(), Some(xsto_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xsto_rules(),
+            Some(xsto_hours()),
         ),
         Xhel => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xhel_rules(), Some(xhel_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xhel_rules(),
+            Some(xhel_hours()),
         ),
         Xcse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xcse_rules(), Some(xcse_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xcse_rules(),
+            Some(xcse_hours()),
         ),
         Xice => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xice_rules(), Some(xice_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xice_rules(),
+            Some(xice_hours()),
         ),
         Xwar => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xwar_rules(), Some(xwar_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xwar_rules(),
+            Some(xwar_hours()),
         ),
         Xpra => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xpra_rules(), Some(xpra_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xpra_rules(),
+            Some(xpra_hours()),
         ),
         Xbud => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xbud_rules(), Some(xbud_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xbud_rules(),
+            Some(xbud_hours()),
         ),
         Xwbo => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xwbo_rules(), Some(xwbo_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xwbo_rules(),
+            Some(xwbo_hours()),
         ),
         Xkrx => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xkrx_rules(), Some(xkrx_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xkrx_rules(),
+            Some(xkrx_hours()),
         ),
         Xses => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xses_rules(), Some(xses_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xses_rules(),
+            Some(xses_hours()),
         ),
         Xtai => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xtai_rules(), Some(xtai_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xtai_rules(),
+            Some(xtai_hours()),
         ),
         Xbkk => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xbkk_rules(), Some(xbkk_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xbkk_rules(),
+            Some(xbkk_hours()),
         ),
         Xkls => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xkls_rules(), Some(xkls_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xkls_rules(),
+            Some(xkls_hours()),
         ),
         Xidx => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xidx_rules(), Some(xidx_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xidx_rules(),
+            Some(xidx_hours()),
         ),
         Xphs => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xphs_rules(), Some(xphs_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xphs_rules(),
+            Some(xphs_hours()),
         ),
         Xnze => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xnze_rules(), Some(xnze_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xnze_rules(),
+            Some(xnze_hours()),
         ),
         Xjse => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xjse_rules(), Some(xjse_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xjse_rules(),
+            Some(xjse_hours()),
         ),
         Xsau => Calendar::with_type(
-            name, MarketType::Equity, MIDEAST_WEEKMASK, xsau_rules(), Some(xsau_hours()),
+            name,
+            MarketType::Equity,
+            MIDEAST_WEEKMASK,
+            xsau_rules(),
+            Some(xsau_hours()),
         ),
         Xist => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xist_rules(), Some(xist_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xist_rules(),
+            Some(xist_hours()),
         ),
         Xtae => Calendar::with_type(
-            name, MarketType::Equity, TASE_WEEKMASK, xtae_rules(), Some(xtae_hours()),
+            name,
+            MarketType::Equity,
+            TASE_WEEKMASK,
+            xtae_rules(),
+            Some(xtae_hours()),
         ),
         Xdfm => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xdfm_rules(), Some(xdfm_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xdfm_rules(),
+            Some(xdfm_hours()),
         ),
         Bvmf => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, bvmf_rules(), Some(bvmf_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            bvmf_rules(),
+            Some(bvmf_hours()),
         ),
         Xmex => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xmex_rules(), Some(xmex_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xmex_rules(),
+            Some(xmex_hours()),
         ),
         Xbue => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xbue_rules(), Some(xbue_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xbue_rules(),
+            Some(xbue_hours()),
         ),
         Xsgo => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xsgo_rules(), Some(xsgo_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xsgo_rules(),
+            Some(xsgo_hours()),
         ),
         Xlim => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xlim_rules(), Some(xlim_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xlim_rules(),
+            Some(xlim_hours()),
         ),
         Xbog => Calendar::with_type(
-            name, MarketType::Equity, STANDARD_WEEKMASK, xbog_rules(), Some(xbog_hours()),
+            name,
+            MarketType::Equity,
+            STANDARD_WEEKMASK,
+            xbog_rules(),
+            Some(xbog_hours()),
         ),
     }
 }
@@ -2404,6 +2723,15 @@ mod tests {
                 code
             );
         }
+    }
+
+    #[test]
+    fn exchange_codes_are_sourced_from_finance_enums() {
+        assert_eq!(EXCHANGE_CODES, finance_enums::data::ExchangeCode_VARIANTS);
+        assert!(std::ptr::eq(
+            EXCHANGE_CODES.as_ptr(),
+            finance_enums::data::ExchangeCode_VARIANTS.as_ptr()
+        ));
     }
 
     #[test]

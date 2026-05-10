@@ -8,9 +8,9 @@ from __future__ import annotations
 
 try:  # native extension is unavailable in some doc builds
     from .finance_dates import (
-        Calendar,
         EXCHANGE_CODES,
         REGION_CODES,
+        Calendar,
         business_day_range,
         date_range,
     )

@@ -72,8 +72,15 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "chrono-tz",
+ "finance_enums",
  "once_cell",
 ]
+
+[[package]]
+name = "finance_enums"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5245039dae7f9b2f0ca49021367ffdc73c83d0f395fadc3f391b4b688d03a65d"
 
 [[package]]
 name = "find-msvc-tools"

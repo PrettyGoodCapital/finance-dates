@@ -17,12 +17,25 @@ pub enum WeekendRoll {
 #[derive(Clone, Debug)]
 pub enum HolidayRule {
     /// Fixed month/day (e.g. Christmas = 12/25).
-    Fixed { month: u32, day: u32, roll: WeekendRoll, since_year: Option<i32> },
+    Fixed {
+        month: u32,
+        day: u32,
+        roll: WeekendRoll,
+        since_year: Option<i32>,
+    },
     /// Nth weekday of a month (e.g. 3rd Monday in January = MLK Day).
     /// `n` is 1-based; negative `n` counts from the end (-1 = last).
-    NthWeekday { month: u32, weekday: Weekday, n: i32, since_year: Option<i32> },
+    NthWeekday {
+        month: u32,
+        weekday: Weekday,
+        n: i32,
+        since_year: Option<i32>,
+    },
     /// Easter Sunday plus offset days (e.g. Good Friday = -2, Easter Monday = +1).
-    EasterOffset { offset_days: i32, since_year: Option<i32> },
+    EasterOffset {
+        offset_days: i32,
+        since_year: Option<i32>,
+    },
     /// A static lookup table keyed by year (e.g. lunar holidays we don't compute).
     Tabulated { table: &'static [(i32, u32, u32)] },
 }
@@ -31,7 +44,12 @@ impl HolidayRule {
     /// Return the observed date in `year`, or `None` if not yet observed.
     pub fn observed_in(&self, year: i32) -> Option<NaiveDate> {
         match self {
-            HolidayRule::Fixed { month, day, roll, since_year } => {
+            HolidayRule::Fixed {
+                month,
+                day,
+                roll,
+                since_year,
+            } => {
                 if let Some(y) = since_year {
                     if year < *y {
                         return None;
@@ -40,7 +58,12 @@ impl HolidayRule {
                 let raw = NaiveDate::from_ymd_opt(year, *month, *day)?;
                 Some(apply_roll(raw, *roll))
             }
-            HolidayRule::NthWeekday { month, weekday, n, since_year } => {
+            HolidayRule::NthWeekday {
+                month,
+                weekday,
+                n,
+                since_year,
+            } => {
                 if let Some(y) = since_year {
                     if year < *y {
                         return None;
@@ -48,7 +71,10 @@ impl HolidayRule {
                 }
                 nth_weekday_of_month(year, *month, *weekday, *n)
             }
-            HolidayRule::EasterOffset { offset_days, since_year } => {
+            HolidayRule::EasterOffset {
+                offset_days,
+                since_year,
+            } => {
                 if let Some(y) = since_year {
                     if year < *y {
                         return None;
@@ -57,12 +83,10 @@ impl HolidayRule {
                 let easter = easter_sunday(year)?;
                 Some(easter + Duration::days(*offset_days as i64))
             }
-            HolidayRule::Tabulated { table } => {
-                table
-                    .iter()
-                    .find(|(y, _, _)| *y == year)
-                    .and_then(|(_, m, d)| NaiveDate::from_ymd_opt(year, *m, *d))
-            }
+            HolidayRule::Tabulated { table } => table
+                .iter()
+                .find(|(y, _, _)| *y == year)
+                .and_then(|(_, m, d)| NaiveDate::from_ymd_opt(year, *m, *d)),
         }
     }
 
@@ -105,7 +129,11 @@ pub fn nth_weekday_of_month(year: i32, month: u32, weekday: Weekday, n: i32) -> 
             .rem_euclid(7)
             + 7 * (n as i64 - 1);
         let candidate = first + Duration::days(offset);
-        if candidate.month() == month { Some(candidate) } else { None }
+        if candidate.month() == month {
+            Some(candidate)
+        } else {
+            None
+        }
     } else {
         // last day of month
         let last_of_month = match month {
@@ -117,7 +145,11 @@ pub fn nth_weekday_of_month(year: i32, month: u32, weekday: Weekday, n: i32) -> 
             .rem_euclid(7);
         let last_of_kind = last_of_month - Duration::days(back);
         let candidate = last_of_kind - Duration::days(((-n - 1) as i64) * 7);
-        if candidate.month() == month { Some(candidate) } else { None }
+        if candidate.month() == month {
+            Some(candidate)
+        } else {
+            None
+        }
     }
 }
 
@@ -146,9 +178,18 @@ mod tests {
 
     #[test]
     fn easter_known_dates() {
-        assert_eq!(easter_sunday(2024).unwrap(), NaiveDate::from_ymd_opt(2024, 3, 31).unwrap());
-        assert_eq!(easter_sunday(2025).unwrap(), NaiveDate::from_ymd_opt(2025, 4, 20).unwrap());
-        assert_eq!(easter_sunday(2000).unwrap(), NaiveDate::from_ymd_opt(2000, 4, 23).unwrap());
+        assert_eq!(
+            easter_sunday(2024).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 3, 31).unwrap()
+        );
+        assert_eq!(
+            easter_sunday(2025).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 20).unwrap()
+        );
+        assert_eq!(
+            easter_sunday(2000).unwrap(),
+            NaiveDate::from_ymd_opt(2000, 4, 23).unwrap()
+        );
     }
 
     #[test]
@@ -173,15 +214,24 @@ mod tests {
     #[test]
     fn weekend_roll_christmas_2022() {
         let r = HolidayRule::Fixed {
-            month: 12, day: 25, roll: WeekendRoll::NearestWeekday, since_year: None,
+            month: 12,
+            day: 25,
+            roll: WeekendRoll::NearestWeekday,
+            since_year: None,
         };
-        assert_eq!(r.observed_in(2022).unwrap(), NaiveDate::from_ymd_opt(2022, 12, 26).unwrap());
+        assert_eq!(
+            r.observed_in(2022).unwrap(),
+            NaiveDate::from_ymd_opt(2022, 12, 26).unwrap()
+        );
     }
 
     #[test]
     fn juneteenth_since_2021() {
         let r = HolidayRule::Fixed {
-            month: 6, day: 19, roll: WeekendRoll::NearestWeekday, since_year: Some(2021),
+            month: 6,
+            day: 19,
+            roll: WeekendRoll::NearestWeekday,
+            since_year: Some(2021),
         };
         assert!(r.observed_in(2020).is_none());
         assert!(r.observed_in(2021).is_some());
