@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="API Reference" href="autoapi/index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Calendars" href="docs/src/CALENDARS.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>finance dates v0.1.0</title>
@@ -197,11 +197,8 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/test_all/index.html">test_all</a></li>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/finance_dates/index.html">finance_dates</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/CALENDARS.html">Calendars</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/API.html">API</a></li>
 </ul>
 
 </div>
@@ -244,17 +241,94 @@
 </div>
 <section class="tex2jax_ignore mathjax_ignore" id="finance-dates">
 <h1>finance dates<a class="headerlink" href="#finance-dates" title="Link to this heading">¶</a></h1>
-<p>Standard financial dates</p>
+<p>Fast date ranges, holiday calendars, and trading hours for financial markets</p>
 <p><a class="reference external" href="https://github.com/prettygoodcapital/finance-dates/actions/workflows/build.yaml"><img alt="Build Status" src="https://github.com/prettygoodcapital/finance-dates/actions/workflows/build.yaml/badge.svg?branch=main&amp;event=push" /></a>
 <a class="reference external" href="https://codecov.io/gh/prettygoodcapital/finance-dates"><img alt="codecov" src="https://codecov.io/gh/prettygoodcapital/finance-dates/branch/main/graph/badge.svg" /></a>
 <a class="reference external" href="https://github.com/prettygoodcapital/finance-dates"><img alt="License" src="https://img.shields.io/github/license/prettygoodcapital/finance-dates" /></a>
 <a class="reference external" href="https://pypi.python.org/pypi/finance-dates"><img alt="PyPI" src="https://img.shields.io/pypi/v/finance-dates.svg" /></a></p>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">finance-dates</span></code> provides calendar-aware date utilities for the
+<code class="docutils literal notranslate"><span class="pre">finance-*</span></code> stack. The Rust core handles holiday-rule expansion,
+weekend observance, early closes, and DST-aware regular and extended
+trading sessions; the Python package exposes a compact API for date
+series, exchange calendars, and open/close timestamps.</p>
+<p>The library is useful when you need to answer questions like:</p>
+<ul class="simple">
+<li><p>What are the valid trading dates for NYSE between two dates?</p></li>
+<li><p>Which dates in a range are holidays or otherwise invalid for a venue?</p></li>
+<li><p>Is a UTC timestamp inside a market session after DST and early closes?</p></li>
+<li><p>What are the UTC open/close datetimes for regular and extended
+trading windows?</p></li>
+</ul>
+<section id="quick-start">
+<h3>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="c1"># Inclusive plain calendar dates.</span>
+<span class="n">c</span><span class="o">.</span><span class="n">days</span><span class="p">()</span>
+
+<span class="c1"># Mon-Fri only, holiday-blind.</span>
+<span class="n">c</span><span class="o">.</span><span class="n">business_days</span><span class="p">()</span>
+
+<span class="c1"># Exchange-aware calendar with holidays, sessions, and early closes.</span>
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">extended_sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">is_open</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>For US equity calendars, <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code> contains the standard
+09:30-16:00 New York session template, while <code class="docutils literal notranslate"><span class="pre">extended_hours</span></code> includes
+<code class="docutils literal notranslate"><span class="pre">pre_open</span></code> and <code class="docutils literal notranslate"><span class="pre">after_close</span></code> templates. On early-close days, the
+after-close window begins at the early close.</p>
+</section>
+<section id="exchange-and-region-calendars">
+<h3>Exchange and region calendars<a class="headerlink" href="#exchange-and-region-calendars" title="Link to this heading">¶</a></h3>
+<p>Calendars can be resolved by exchange/MIC code or by broad region code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span><span class="p">,</span> <span class="n">REGION_CODES</span>
+
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XLON&quot;</span><span class="p">)</span>   <span class="c1"># London Stock Exchange</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XCME&quot;</span><span class="p">)</span>   <span class="c1"># CME futures-style overnight sessions</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;FOREX&quot;</span><span class="p">)</span>  <span class="c1"># 24x5 FX family</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>       <span class="c1"># representative US equity calendar</span>
+
+<span class="s2">&quot;XNYS&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>
+<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">REGION_CODES</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code> is sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>, so the enum package is
+the source of truth for supported exchange identifiers.</p>
+</section>
+<section id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h3>
+<p>See the <a class="reference internal" href="docs/src/CALENDARS.html"><span class="std std-doc">Calendars</span></a> page for supported concepts,
+market families, date-series patterns, and trading-hours conventions.
+See the <a class="reference internal" href="docs/src/API.html"><span class="std std-doc">API</span></a> page for the public Python API and
+recipes.</p>
+</section>
+<section id="rust-crate">
+<h3>Rust crate<a class="headerlink" href="#rust-crate" title="Link to this heading">¶</a></h3>
+<p>The Rust library crate is published as <code class="docutils literal notranslate"><span class="pre">finance-dates</span></code> and imported as
+<code class="docutils literal notranslate"><span class="pre">finance_dates</span></code> in Rust code:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[dependencies]</span>
+<span class="n">finance-dates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+</pre></div>
+</div>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">finance_dates</span><span class="p">::{</span><span class="n">calendar_for_exchange</span><span class="p">,</span><span class="w"> </span><span class="n">date_range</span><span class="p">};</span>
+</pre></div>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This library was generated using <a class="reference external" href="https://copier.readthedocs.io/en/stable/">copier</a> from the <a class="reference external" href="https://github.com/python-project-templates/base">Base Python Project Template repository</a>.</p>
 </div>
+</section>
 </section>
 </section>
 
@@ -263,12 +337,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="autoapi/index.html">
+          <a class="next-page" href="docs/src/CALENDARS.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">API Reference</div>
+                <div class="title">Calendars</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
