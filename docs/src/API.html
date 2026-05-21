@@ -272,13 +272,139 @@
 <h2>Reference<a class="headerlink" href="#reference" title="Link to this heading">¶</a></h2>
 <dl class="py function">
 <dt class="sig sig-object py" id="finance_dates.date_range">
-<span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">date_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">_args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/finance_dates.html#date_range"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#finance_dates.date_range" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">date_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_days</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.date_range" title="Link to this definition">¶</a></dt>
+<dd><p>Inclusive calendar-day range with a fixed step in days.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="finance_dates.Calendar">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">Calendar</span></span><a class="headerlink" href="#finance_dates.Calendar" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Holiday calendar for an exchange or region.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.business_days">
+<span class="sig-name descname"><span class="pre">business_days</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.business_days" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.business_days_between">
+<span class="sig-name descname"><span class="pre">business_days_between</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.business_days_between" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.days">
+<span class="sig-name descname"><span class="pre">days</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_days</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.days" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.early_close_for">
+<span class="sig-name descname"><span class="pre">early_close_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.early_close_for" title="Link to this definition">¶</a></dt>
+<dd><p>Local early-close time for <cite>date</cite> as <cite>(hour, minute)</cite>, or <cite>None</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.extended_hours">
+<span class="sig-name descname"><span class="pre">extended_hours</span></span><a class="headerlink" href="#finance_dates.Calendar.extended_hours" title="Link to this definition">¶</a></dt>
+<dd><p>Extended trading windows as <cite>[(name, open_hh, open_mm, open_offset, close_hh, close_mm, close_offset)]</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.extended_sessions">
+<span class="sig-name descname"><span class="pre">extended_sessions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.extended_sessions" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.from_exchange">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_exchange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_exchange" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.from_range">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_days</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_range" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.from_region">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_region" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.holidays">
+<span class="sig-name descname"><span class="pre">holidays</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.holidays" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.is_business_day">
+<span class="sig-name descname"><span class="pre">is_business_day</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.is_business_day" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.is_holiday">
+<span class="sig-name descname"><span class="pre">is_holiday</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.is_holiday" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.is_open">
+<span class="sig-name descname"><span class="pre">is_open</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">when</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.is_open" title="Link to this definition">¶</a></dt>
+<dd><p>True when <cite>when</cite> is inside a regular trading session.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.market_type">
+<span class="sig-name descname"><span class="pre">market_type</span></span><a class="headerlink" href="#finance_dates.Calendar.market_type" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="finance_dates.Calendar">
-<span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">Calendar</span></span><a class="headerlink" href="#finance_dates.Calendar" title="Link to this definition">¶</a></dt>
-<dd><p>alias of <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></p>
+<dt class="sig sig-object py" id="finance_dates.Calendar.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#finance_dates.Calendar.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.next_business_day">
+<span class="sig-name descname"><span class="pre">next_business_day</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.next_business_day" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.next_close">
+<span class="sig-name descname"><span class="pre">next_close</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">when</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.next_close" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.next_open">
+<span class="sig-name descname"><span class="pre">next_open</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">when</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.next_open" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.previous_business_day">
+<span class="sig-name descname"><span class="pre">previous_business_day</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.previous_business_day" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.regular_sessions">
+<span class="sig-name descname"><span class="pre">regular_sessions</span></span><a class="headerlink" href="#finance_dates.Calendar.regular_sessions" title="Link to this definition">¶</a></dt>
+<dd><p>Trading sessions as <cite>[(open_hh, open_mm, open_offset, close_hh, close_mm, close_offset)]</cite>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.sessions">
+<span class="sig-name descname"><span class="pre">sessions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.sessions" title="Link to this definition">¶</a></dt>
+<dd><p><cite>(open, close)</cite> UTC datetimes for every business day in
+<cite>[start, end]</cite> (inclusive), with early-close adjustments applied.
+Each entry corresponds to one regular trading session. Returns an
+empty list if no trading hours are configured.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.timezone">
+<span class="sig-name descname"><span class="pre">timezone</span></span><a class="headerlink" href="#finance_dates.Calendar.timezone" title="Link to this definition">¶</a></dt>
+<dd><p>IANA timezone name for trading hours, or “” if no hours configured.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.weekmask">
+<span class="sig-name descname"><span class="pre">weekmask</span></span><a class="headerlink" href="#finance_dates.Calendar.weekmask" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </section>
@@ -470,7 +596,32 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#quick-start">Quick start</a></li>
 <li><a class="reference internal" href="#reference">Reference</a><ul>
 <li><a class="reference internal" href="#finance_dates.date_range"><code class="docutils literal notranslate"><span class="pre">date_range()</span></code></a></li>
-<li><a class="reference internal" href="#finance_dates.Calendar"><code class="docutils literal notranslate"><span class="pre">Calendar</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar"><code class="docutils literal notranslate"><span class="pre">Calendar</span></code></a><ul>
+<li><a class="reference internal" href="#finance_dates.Calendar.business_days"><code class="docutils literal notranslate"><span class="pre">Calendar.business_days()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.business_days_between"><code class="docutils literal notranslate"><span class="pre">Calendar.business_days_between()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.days"><code class="docutils literal notranslate"><span class="pre">Calendar.days()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.early_close_for"><code class="docutils literal notranslate"><span class="pre">Calendar.early_close_for()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.extended_hours"><code class="docutils literal notranslate"><span class="pre">Calendar.extended_hours</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.extended_sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.extended_sessions()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.from_exchange"><code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.from_range"><code class="docutils literal notranslate"><span class="pre">Calendar.from_range()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.from_region"><code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.holidays"><code class="docutils literal notranslate"><span class="pre">Calendar.holidays()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.is_business_day"><code class="docutils literal notranslate"><span class="pre">Calendar.is_business_day()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.is_holiday"><code class="docutils literal notranslate"><span class="pre">Calendar.is_holiday()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.is_open"><code class="docutils literal notranslate"><span class="pre">Calendar.is_open()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.market_type"><code class="docutils literal notranslate"><span class="pre">Calendar.market_type</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.name"><code class="docutils literal notranslate"><span class="pre">Calendar.name</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.next_business_day"><code class="docutils literal notranslate"><span class="pre">Calendar.next_business_day()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.next_close"><code class="docutils literal notranslate"><span class="pre">Calendar.next_close()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.next_open"><code class="docutils literal notranslate"><span class="pre">Calendar.next_open()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.previous_business_day"><code class="docutils literal notranslate"><span class="pre">Calendar.previous_business_day()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.regular_sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.regular_sessions</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.sessions()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.timezone"><code class="docutils literal notranslate"><span class="pre">Calendar.timezone</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.weekmask"><code class="docutils literal notranslate"><span class="pre">Calendar.weekmask</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#top-level-helpers">Top-level helpers</a><ul>
