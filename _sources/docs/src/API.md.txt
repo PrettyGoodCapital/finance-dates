@@ -4,9 +4,10 @@
 
 ```python
 from finance_dates import (
+    COUNTRY_CODES,
+    COUNTRY_CODES3,
     Calendar,
     EXCHANGE_CODES,
-    REGION_CODES,
     date_range,
 )
 ```
@@ -22,8 +23,10 @@ ______________________________________________________________________
 from datetime import date, datetime, timezone
 
 from finance_dates import Calendar
+from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 nyse = Calendar.from_exchange("XNYS")
+gas = Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
 
 trading_days = nyse.business_days(date(2024, 7, 1), date(2024, 7, 5))
 holidays = nyse.holidays(date(2024, 7, 1), date(2024, 9, 30))
@@ -76,24 +79,43 @@ Construct calendars with class methods:
 ```python
 from datetime import date
 from finance_dates import Calendar
+from finance_enums import AgricultureType, EnergyType, ExchangeCode, UnderlyingAssetClass
 
 plain = Calendar.from_range(date(2024, 1, 1), date(2024, 1, 5))
 nyse = Calendar.from_exchange("XNYS")
 us = Calendar.from_region("US")
+gas = Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
+corn = Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclass=AgricultureType.Corn)
 ```
 
 `from_range()` creates a plain date-series calendar. `from_exchange()`
-and `from_region()` create exchange-aware calendars.
+and `from_region()` create exchange-aware calendars; `from_region()` accepts
+ISO country codes from `COUNTRY_CODES` and `COUNTRY_CODES3`. `from_asset()`
+accepts finance-enums exchange codes, underlying asset classes, commodity types,
+and commodity subclasses; when no product-specific calendar is modeled, it falls
+back to the broad exchange calendar for recognized finance-enums asset labels.
 
 Useful attributes:
 
 ```python
 nyse.name         # "XNYS"
-nyse.market_type  # "equity"
+nyse.market_type  # "Equities"
 nyse.weekmask     # [True, True, True, True, True, False, False]
 nyse.timezone     # "America/New_York"
 nyse.regular_sessions  # local regular open/close templates
 nyse.extended_hours    # named local extended-hours templates
+
+tokyo = Calendar.from_exchange("XTKS")
+tokyo.regular_sessions
+# [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]
+
+grains = Calendar.from_exchange("CBOT_GRAINS")
+grains.regular_sessions
+# [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]
+
+energy = Calendar.from_exchange("CME_ENERGY")
+energy.regular_sessions
+# [(17, 0, -1, 16, 0, 0)]
 ```
 
 Date methods:
@@ -127,8 +149,9 @@ nyse.early_close_for(date(2024, 7, 3))
 ```
 
 `sessions()` returns `(open, close)` pairs as timezone-aware UTC
-`datetime` values for regular sessions. `extended_sessions()` returns
-`(name, open, close)` tuples for named extended-hours windows such as
+`datetime` values for regular sessions. A business day with a lunch break or
+other split schedule returns one pair per regular interval. `extended_sessions()`
+returns `(name, open, close)` tuples for named extended-hours windows such as
 `pre_open` and `after_close`.
 
 ______________________________________________________________________
@@ -165,6 +188,62 @@ cal = Calendar.from_exchange("XCME")
 windows = cal.sessions(date(2024, 1, 8), date(2024, 1, 12))
 ```
 
+### Inspect lunch-break sessions
+
+```python
+from datetime import date, datetime, timezone
+from finance_dates import Calendar
+
+tokyo = Calendar.from_exchange("XTKS")
+tokyo.regular_sessions
+# [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]
+
+tokyo.is_open(datetime(2026, 5, 25, 2, 45, tzinfo=timezone.utc))
+# False, 11:45 local is the lunch gap.
+
+tokyo.sessions(date(2026, 5, 25), date(2026, 5, 25))
+# Two UTC open/close pairs, one for each regular session.
+```
+
+### Inspect date-effective sessions
+
+```python
+from datetime import date
+from finance_dates import Calendar
+
+tokyo = Calendar.from_exchange("XTKS")
+
+# Before the 2024-11-05 close extension, Tokyo's afternoon session closed
+# at 15:00 local. Current dates close at 15:30 local.
+tokyo.sessions(date(2024, 11, 1), date(2024, 11, 1))
+tokyo.sessions(date(2024, 11, 5), date(2024, 11, 5))
+```
+
+### Inspect commodity futures sessions
+
+```python
+from datetime import date, datetime, timezone
+from finance_dates import Calendar
+from finance_enums import AgricultureType, EnergyType, ExchangeCode, UnderlyingAssetClass
+
+nymex = Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
+nymex.is_open(datetime(2024, 1, 8, 22, 30, tzinfo=timezone.utc))
+# False, 16:30 Chicago time is the daily maintenance break.
+
+grains = Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclass=AgricultureType.Corn)
+grains.sessions(date(2024, 1, 8), date(2024, 1, 8))
+# Evening and day-session UTC windows for the Jan 8 trade date.
+
+for code in ["CBOT_OILSEEDS", "CBOT_WHEAT", "CBOT_CORN", "CBOT_SOYBEANS"]:
+    Calendar.from_exchange(code).regular_sessions
+
+for code in ["CME_LIVESTOCK", "CME_DAIRY", "CME_LUMBER"]:
+    Calendar.from_exchange(code).regular_sessions
+
+for code in ["LE", "CL", "GC", "ZC", "LBR"]:
+    Calendar.from_exchange(code).regular_sessions
+```
+
 ### Generate extended-hours windows
 
 ```python
@@ -176,14 +255,15 @@ templates = cal.extended_hours
 windows = cal.extended_sessions(date(2024, 1, 8), date(2024, 1, 8))
 ```
 
-### Discover supported exchanges
+### Discover supported codes
 
 ```python
-from finance_dates import EXCHANGE_CODES, REGION_CODES
+from finance_dates import COUNTRY_CODES, COUNTRY_CODES3, EXCHANGE_CODES
 
 len(EXCHANGE_CODES)
 "FOREX" in EXCHANGE_CODES
-"BR" in REGION_CODES
+"BR" in COUNTRY_CODES
+"BRA" in COUNTRY_CODES3
 ```
 
 ______________________________________________________________________

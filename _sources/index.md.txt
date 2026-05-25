@@ -45,6 +45,7 @@ The library is useful when you need to answer questions like:
 from datetime import date, datetime, timezone
 
 from finance_dates import Calendar
+from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 c = Calendar.from_range(start=date(2024, 1, 1), end=date(2024, 1, 5))
 
@@ -61,6 +62,13 @@ nyse.holidays(date(2024, 7, 1), date(2024, 9, 30))
 nyse.sessions(date(2024, 7, 1), date(2024, 7, 5))
 nyse.extended_sessions(date(2024, 7, 1), date(2024, 7, 5))
 nyse.is_open(datetime(2024, 3, 11, 13, 30, tzinfo=timezone.utc))
+
+gas = Calendar.from_asset(
+  ExchangeCode.XNYM,
+  UnderlyingAssetClass.Commodity,
+  subclass=EnergyType.NaturalGas,
+)
+gas.regular_sessions
 ```
 
 For US equity calendars, `regular_sessions` contains the standard
@@ -68,24 +76,47 @@ For US equity calendars, `regular_sessions` contains the standard
 `pre_open` and `after_close` templates. On early-close days, the
 after-close window begins at the early close.
 
-### Exchange and region calendars
+Calendars with lunch breaks expose multiple regular session templates. For
+example, Tokyo (`XTKS`) currently returns separate 09:00-11:30 and
+12:30-15:30 local sessions, and `sessions()` returns one UTC open/close pair
+per regular interval. Tokyo is date-effective around the 2024-11-05 close-time
+extension, so historical dates before that change close at 15:00 local while
+current dates close at 15:30.
 
-Calendars can be resolved by exchange/MIC code or by broad region code:
+Commodity futures can also use split sessions. Prefer `Calendar.from_asset()`
+with `finance-enums` exchange and asset/subclass enum members when you know the
+instrument vocabulary; for example `ExchangeCode.XNYM` plus
+`EnergyType.NaturalGas` resolves to the NYMEX energy template without requiring
+synthetic names like `NYMEX_ENERGY`. Synthetic product-group codes such as
+`CBOT_GRAINS` remain accepted by `from_exchange()` for lower-level calendar
+inspection and compatibility.
+
+### Exchange and country calendars
+
+Calendars can be resolved by exchange/MIC code or by ISO country code:
 
 ```python
-from finance_dates import Calendar, EXCHANGE_CODES, REGION_CODES
+from finance_dates import Calendar, COUNTRY_CODES, COUNTRY_CODES3, EXCHANGE_CODES
+from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 Calendar.from_exchange("XLON")   # London Stock Exchange
+Calendar.from_exchange("XTKS")   # Tokyo Stock Exchange, split lunch sessions
 Calendar.from_exchange("XCME")   # CME futures-style overnight sessions
+Calendar.from_exchange("CBOT_GRAINS")  # CBOT grain/oilseed futures sessions
+Calendar.from_exchange("CME_ENERGY")  # Globex energy-category alias
+Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
 Calendar.from_exchange("FOREX")  # 24x5 FX family
 Calendar.from_region("US")       # representative US equity calendar
 
 "XNYS" in EXCHANGE_CODES
-"BR" in REGION_CODES
+"BR" in COUNTRY_CODES
+"BRA" in COUNTRY_CODES3
 ```
 
 `EXCHANGE_CODES` is sourced from `finance-enums`, so the enum package is
-the source of truth for supported exchange identifiers.
+the source of truth for supported exchange identifiers. `COUNTRY_CODES` and
+`COUNTRY_CODES3` are sourced from `finance-enums` as well and represent the
+supported ISO country-code inputs for `Calendar.from_region()`.
 
 ### Documentation
 

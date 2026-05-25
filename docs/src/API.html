@@ -241,9 +241,10 @@
 <h1>API<a class="headerlink" href="#api" title="Link to this heading">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">finance-dates</span></code> exposes the following public Python symbols:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">COUNTRY_CODES</span><span class="p">,</span>
+    <span class="n">COUNTRY_CODES3</span><span class="p">,</span>
     <span class="n">Calendar</span><span class="p">,</span>
     <span class="n">EXCHANGE_CODES</span><span class="p">,</span>
-    <span class="n">REGION_CODES</span><span class="p">,</span>
     <span class="n">date_range</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
@@ -256,8 +257,10 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
 <span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">gas</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
 
 <span class="n">trading_days</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">holidays</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
@@ -314,8 +317,18 @@
 <dd></dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.from_asset">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_asset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exchange</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asset_class</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">subclass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_asset" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="finance_dates.Calendar.from_exchange">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_exchange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_exchange" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="finance_dates.Calendar.from_product">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_product</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exchange</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">product</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.Calendar.from_product" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -432,21 +445,40 @@ exchange holidays matter.</p>
 <p>Construct calendars with class methods:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgricultureType</span><span class="p">,</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
 <span class="n">plain</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_range</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
 <span class="n">us</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>
+<span class="n">gas</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
+<span class="n">corn</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XCBT</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Agriculture</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">AgricultureType</span><span class="o">.</span><span class="n">Corn</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">from_range()</span></code> creates a plain date-series calendar. <code class="docutils literal notranslate"><span class="pre">from_exchange()</span></code>
-and <code class="docutils literal notranslate"><span class="pre">from_region()</span></code> create exchange-aware calendars.</p>
+and <code class="docutils literal notranslate"><span class="pre">from_region()</span></code> create exchange-aware calendars; <code class="docutils literal notranslate"><span class="pre">from_region()</span></code> accepts
+ISO country codes from <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code>. <code class="docutils literal notranslate"><span class="pre">from_asset()</span></code>
+accepts finance-enums exchange codes, underlying asset classes, commodity types,
+and commodity subclasses; when no product-specific calendar is modeled, it falls
+back to the broad exchange calendar for recognized finance-enums asset labels.</p>
 <p>Useful attributes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">nyse</span><span class="o">.</span><span class="n">name</span>         <span class="c1"># &quot;XNYS&quot;</span>
-<span class="n">nyse</span><span class="o">.</span><span class="n">market_type</span>  <span class="c1"># &quot;equity&quot;</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">market_type</span>  <span class="c1"># &quot;Equities&quot;</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">weekmask</span>     <span class="c1"># [True, True, True, True, True, False, False]</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">timezone</span>     <span class="c1"># &quot;America/New_York&quot;</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">regular_sessions</span>  <span class="c1"># local regular open/close templates</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">extended_hours</span>    <span class="c1"># named local extended-hours templates</span>
+
+<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+<span class="n">tokyo</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]</span>
+
+<span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>
+<span class="n">grains</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]</span>
+
+<span class="n">energy</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CME_ENERGY&quot;</span><span class="p">)</span>
+<span class="n">energy</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(17, 0, -1, 16, 0, 0)]</span>
 </pre></div>
 </div>
 <p>Date methods:</p>
@@ -476,8 +508,9 @@ and <code class="docutils literal notranslate"><span class="pre">from_region()</
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">sessions()</span></code> returns <code class="docutils literal notranslate"><span class="pre">(open,</span> <span class="pre">close)</span></code> pairs as timezone-aware UTC
-<code class="docutils literal notranslate"><span class="pre">datetime</span></code> values for regular sessions. <code class="docutils literal notranslate"><span class="pre">extended_sessions()</span></code> returns
-<code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">open,</span> <span class="pre">close)</span></code> tuples for named extended-hours windows such as
+<code class="docutils literal notranslate"><span class="pre">datetime</span></code> values for regular sessions. A business day with a lunch break or
+other split schedule returns one pair per regular interval. <code class="docutils literal notranslate"><span class="pre">extended_sessions()</span></code>
+returns <code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">open,</span> <span class="pre">close)</span></code> tuples for named extended-hours windows such as
 <code class="docutils literal notranslate"><span class="pre">pre_open</span></code> and <code class="docutils literal notranslate"><span class="pre">after_close</span></code>.</p>
 </section>
 <hr class="docutils" />
@@ -513,6 +546,62 @@ and <code class="docutils literal notranslate"><span class="pre">from_region()</
 </pre></div>
 </div>
 </section>
+<section id="inspect-lunch-break-sessions">
+<h3>Inspect lunch-break sessions<a class="headerlink" href="#inspect-lunch-break-sessions" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+<span class="n">tokyo</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]</span>
+
+<span class="n">tokyo</span><span class="o">.</span><span class="n">is_open</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span>
+<span class="c1"># False, 11:45 local is the lunch gap.</span>
+
+<span class="n">tokyo</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">))</span>
+<span class="c1"># Two UTC open/close pairs, one for each regular session.</span>
+</pre></div>
+</div>
+</section>
+<section id="inspect-date-effective-sessions">
+<h3>Inspect date-effective sessions<a class="headerlink" href="#inspect-date-effective-sessions" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+
+<span class="c1"># Before the 2024-11-05 close extension, Tokyo&#39;s afternoon session closed</span>
+<span class="c1"># at 15:00 local. Current dates close at 15:30 local.</span>
+<span class="n">tokyo</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+<span class="n">tokyo</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="inspect-commodity-futures-sessions">
+<h3>Inspect commodity futures sessions<a class="headerlink" href="#inspect-commodity-futures-sessions" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgricultureType</span><span class="p">,</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
+
+<span class="n">nymex</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
+<span class="n">nymex</span><span class="o">.</span><span class="n">is_open</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span>
+<span class="c1"># False, 16:30 Chicago time is the daily maintenance break.</span>
+
+<span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XCBT</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Agriculture</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">AgricultureType</span><span class="o">.</span><span class="n">Corn</span><span class="p">)</span>
+<span class="n">grains</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="c1"># Evening and day-session UTC windows for the Jan 8 trade date.</span>
+
+<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CBOT_OILSEEDS&quot;</span><span class="p">,</span> <span class="s2">&quot;CBOT_WHEAT&quot;</span><span class="p">,</span> <span class="s2">&quot;CBOT_CORN&quot;</span><span class="p">,</span> <span class="s2">&quot;CBOT_SOYBEANS&quot;</span><span class="p">]:</span>
+    <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">.</span><span class="n">regular_sessions</span>
+
+<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CME_LIVESTOCK&quot;</span><span class="p">,</span> <span class="s2">&quot;CME_DAIRY&quot;</span><span class="p">,</span> <span class="s2">&quot;CME_LUMBER&quot;</span><span class="p">]:</span>
+    <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">.</span><span class="n">regular_sessions</span>
+
+<span class="k">for</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;LE&quot;</span><span class="p">,</span> <span class="s2">&quot;CL&quot;</span><span class="p">,</span> <span class="s2">&quot;GC&quot;</span><span class="p">,</span> <span class="s2">&quot;ZC&quot;</span><span class="p">,</span> <span class="s2">&quot;LBR&quot;</span><span class="p">]:</span>
+    <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">.</span><span class="n">regular_sessions</span>
+</pre></div>
+</div>
+</section>
 <section id="generate-extended-hours-windows">
 <h3>Generate extended-hours windows<a class="headerlink" href="#generate-extended-hours-windows" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
@@ -524,13 +613,14 @@ and <code class="docutils literal notranslate"><span class="pre">from_region()</
 </pre></div>
 </div>
 </section>
-<section id="discover-supported-exchanges">
-<h3>Discover supported exchanges<a class="headerlink" href="#discover-supported-exchanges" title="Link to this heading">¶</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">EXCHANGE_CODES</span><span class="p">,</span> <span class="n">REGION_CODES</span>
+<section id="discover-supported-codes">
+<h3>Discover supported codes<a class="headerlink" href="#discover-supported-codes" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">COUNTRY_CODES</span><span class="p">,</span> <span class="n">COUNTRY_CODES3</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span>
 
 <span class="nb">len</span><span class="p">(</span><span class="n">EXCHANGE_CODES</span><span class="p">)</span>
 <span class="s2">&quot;FOREX&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>
-<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">REGION_CODES</span>
+<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES</span>
+<span class="s2">&quot;BRA&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES3</span>
 </pre></div>
 </div>
 </section>
@@ -603,7 +693,9 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#finance_dates.Calendar.early_close_for"><code class="docutils literal notranslate"><span class="pre">Calendar.early_close_for()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.extended_hours"><code class="docutils literal notranslate"><span class="pre">Calendar.extended_hours</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.extended_sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.extended_sessions()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.from_asset"><code class="docutils literal notranslate"><span class="pre">Calendar.from_asset()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.from_exchange"><code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.from_product"><code class="docutils literal notranslate"><span class="pre">Calendar.from_product()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.from_range"><code class="docutils literal notranslate"><span class="pre">Calendar.from_range()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.from_region"><code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.holidays"><code class="docutils literal notranslate"><span class="pre">Calendar.holidays()</span></code></a></li>
@@ -633,8 +725,11 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#generate-valid-trading-dates">Generate valid trading dates</a></li>
 <li><a class="reference internal" href="#generate-invalid-holiday-dates">Generate invalid holiday dates</a></li>
 <li><a class="reference internal" href="#generate-utc-session-windows">Generate UTC session windows</a></li>
+<li><a class="reference internal" href="#inspect-lunch-break-sessions">Inspect lunch-break sessions</a></li>
+<li><a class="reference internal" href="#inspect-date-effective-sessions">Inspect date-effective sessions</a></li>
+<li><a class="reference internal" href="#inspect-commodity-futures-sessions">Inspect commodity futures sessions</a></li>
 <li><a class="reference internal" href="#generate-extended-hours-windows">Generate extended-hours windows</a></li>
-<li><a class="reference internal" href="#discover-supported-exchanges">Discover supported exchanges</a></li>
+<li><a class="reference internal" href="#discover-supported-codes">Discover supported codes</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#versioning">Versioning</a></li>

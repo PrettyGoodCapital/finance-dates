@@ -264,6 +264,7 @@ trading windows?</p></li>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
 <span class="n">c</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 
@@ -280,29 +281,57 @@ trading windows?</p></li>
 <span class="n">nyse</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">extended_sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">is_open</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span>
+
+<span class="n">gas</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span>
+  <span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span>
+  <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span>
+  <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">gas</span><span class="o">.</span><span class="n">regular_sessions</span>
 </pre></div>
 </div>
 <p>For US equity calendars, <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code> contains the standard
 09:30-16:00 New York session template, while <code class="docutils literal notranslate"><span class="pre">extended_hours</span></code> includes
 <code class="docutils literal notranslate"><span class="pre">pre_open</span></code> and <code class="docutils literal notranslate"><span class="pre">after_close</span></code> templates. On early-close days, the
 after-close window begins at the early close.</p>
+<p>Calendars with lunch breaks expose multiple regular session templates. For
+example, Tokyo (<code class="docutils literal notranslate"><span class="pre">XTKS</span></code>) currently returns separate 09:00-11:30 and
+12:30-15:30 local sessions, and <code class="docutils literal notranslate"><span class="pre">sessions()</span></code> returns one UTC open/close pair
+per regular interval. Tokyo is date-effective around the 2024-11-05 close-time
+extension, so historical dates before that change close at 15:00 local while
+current dates close at 15:30.</p>
+<p>Commodity futures can also use split sessions. Prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_asset()</span></code>
+with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> exchange and asset/subclass enum members when you know the
+instrument vocabulary; for example <code class="docutils literal notranslate"><span class="pre">ExchangeCode.XNYM</span></code> plus
+<code class="docutils literal notranslate"><span class="pre">EnergyType.NaturalGas</span></code> resolves to the NYMEX energy template without requiring
+synthetic names like <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>. Synthetic product-group codes such as
+<code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code> remain accepted by <code class="docutils literal notranslate"><span class="pre">from_exchange()</span></code> for lower-level calendar
+inspection and compatibility.</p>
 </section>
-<section id="exchange-and-region-calendars">
-<h3>Exchange and region calendars<a class="headerlink" href="#exchange-and-region-calendars" title="Link to this heading">¶</a></h3>
-<p>Calendars can be resolved by exchange/MIC code or by broad region code:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span><span class="p">,</span> <span class="n">REGION_CODES</span>
+<section id="exchange-and-country-calendars">
+<h3>Exchange and country calendars<a class="headerlink" href="#exchange-and-country-calendars" title="Link to this heading">¶</a></h3>
+<p>Calendars can be resolved by exchange/MIC code or by ISO country code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span><span class="p">,</span> <span class="n">COUNTRY_CODES</span><span class="p">,</span> <span class="n">COUNTRY_CODES3</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XLON&quot;</span><span class="p">)</span>   <span class="c1"># London Stock Exchange</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>   <span class="c1"># Tokyo Stock Exchange, split lunch sessions</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XCME&quot;</span><span class="p">)</span>   <span class="c1"># CME futures-style overnight sessions</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>  <span class="c1"># CBOT grain/oilseed futures sessions</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CME_ENERGY&quot;</span><span class="p">)</span>  <span class="c1"># Globex energy-category alias</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;FOREX&quot;</span><span class="p">)</span>  <span class="c1"># 24x5 FX family</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>       <span class="c1"># representative US equity calendar</span>
 
 <span class="s2">&quot;XNYS&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>
-<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">REGION_CODES</span>
+<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES</span>
+<span class="s2">&quot;BRA&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES3</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code> is sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>, so the enum package is
-the source of truth for supported exchange identifiers.</p>
+the source of truth for supported exchange identifiers. <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and
+<code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code> are sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> as well and represent the
+supported ISO country-code inputs for <code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code>.</p>
 </section>
 <section id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h3>
@@ -370,7 +399,7 @@ recipes.</p>
 <li><a class="reference internal" href="#">finance dates</a><ul>
 <li><a class="reference internal" href="#overview">Overview</a><ul>
 <li><a class="reference internal" href="#quick-start">Quick start</a></li>
-<li><a class="reference internal" href="#exchange-and-region-calendars">Exchange and region calendars</a></li>
+<li><a class="reference internal" href="#exchange-and-country-calendars">Exchange and country calendars</a></li>
 <li><a class="reference internal" href="#documentation">Documentation</a></li>
 <li><a class="reference internal" href="#rust-crate">Rust crate</a></li>
 </ul>
