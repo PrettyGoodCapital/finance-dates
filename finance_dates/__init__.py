@@ -9,15 +9,17 @@ from __future__ import annotations
 
 try:  # native extension is unavailable in some doc builds
     from .finance_dates import (
+        COUNTRY_CODES,
+        COUNTRY_CODES3,
         EXCHANGE_CODES,
-        REGION_CODES,
         Calendar,
         date_range,
     )
 except ImportError:  # pragma: no cover - sphinx fallback
     Calendar = None  # type: ignore[assignment]
+    COUNTRY_CODES = ()  # type: ignore[assignment]
+    COUNTRY_CODES3 = ()  # type: ignore[assignment]
     EXCHANGE_CODES = ()  # type: ignore[assignment]
-    REGION_CODES = ()  # type: ignore[assignment]
 
     def date_range(*_args, **_kwargs):  # type: ignore[no-redef]
         raise ImportError("finance_dates native extension is not available")
@@ -27,7 +29,8 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Calendar",
+    "COUNTRY_CODES",
+    "COUNTRY_CODES3",
     "EXCHANGE_CODES",
-    "REGION_CODES",
     "date_range",
 ]
