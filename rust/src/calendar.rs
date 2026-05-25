@@ -10,46 +10,16 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use crate::holiday::{HolidayRule, Weekday, WeekendRoll};
-use crate::range::{
-    business_day_range, business_days_between, next_business_day, previous_business_day,
-    STANDARD_WEEKMASK,
-};
+use crate::range::STANDARD_WEEKMASK;
 use crate::trading_hours::{ExtendedSession, Session, TradingHours};
 
-pub use finance_enums::data::ExchangeCode_VARIANTS as EXCHANGE_CODES;
-
-/// The class of instrument a calendar represents.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MarketType {
-    /// Cash equities and ETFs.
-    Equity,
-    /// Listed options.
-    Options,
-    /// Listed futures and futures options.
-    Futures,
-    /// Spot / margin FX.
-    Fx,
-    /// Fixed-income (SIFMA-style).
-    Bond,
-    /// 24x7 crypto.
-    Crypto,
-    /// Other / unknown.
-    Other,
-}
-
-impl MarketType {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            MarketType::Equity => "equity",
-            MarketType::Options => "options",
-            MarketType::Futures => "futures",
-            MarketType::Fx => "fx",
-            MarketType::Bond => "bond",
-            MarketType::Crypto => "crypto",
-            MarketType::Other => "other",
-        }
-    }
-}
+pub use finance_enums::data::{
+    AgricultureType_VARIANTS as AGRICULTURE_TYPES, CommodityType_VARIANTS as COMMODITY_TYPES,
+    CountryCode3_VARIANTS as COUNTRY_CODES3, CountryCode_VARIANTS as COUNTRY_CODES,
+    EnergyType_VARIANTS as ENERGY_TYPES, ExchangeCode_VARIANTS as EXCHANGE_CODES,
+    MarketType_VARIANTS as MARKET_TYPES, MetalsType_VARIANTS as METALS_TYPES,
+    UnderlyingAssetClass_VARIANTS as UNDERLYING_ASSET_CLASSES,
+};
 
 /// Mon-Sun all-true weekmask (used by 24x7 crypto venues).
 pub const CRYPTO_WEEKMASK: [bool; 7] = [true, true, true, true, true, true, true];
@@ -57,20 +27,64 @@ pub const CRYPTO_WEEKMASK: [bool; 7] = [true, true, true, true, true, true, true
 /// Sun-Fri weekmask used by 24x5 FX. Monday=index 0; Sunday=index 6.
 pub const FX_WEEKMASK: [bool; 7] = [true, true, true, true, true, false, true];
 
-/// ISO region codes recognised by `calendar_for_region`.
-pub const REGION_CODES: &[&str] = &[
-    "US", "UK", "GB", "EU", "JP", "HK", "CN", "CA", "AU", "IN", "DE", "FR", "NL", "BE", "PT", "IT",
-    "ES", "CH", "NO", "SE", "FI", "DK", "IS", "PL", "CZ", "HU", "AT", "IE", "KR", "SG", "TW", "TH",
-    "MY", "ID", "PH", "NZ", "ZA", "SA", "TR", "IL", "AE", "BR", "MX", "AR", "CL", "PE", "CO",
-];
+const MARKET_TYPE_ENUM: &str = "MarketType";
+
+fn finance_enum_variant(
+    enum_name: &str,
+    variants: &'static [&'static str],
+    variant: &str,
+) -> &'static str {
+    variants
+        .iter()
+        .copied()
+        .find(|candidate| *candidate == variant)
+        .unwrap_or_else(|| panic!("finance-enums missing {enum_name}.{variant}"))
+}
+
+fn market_type(variant: &str) -> &'static str {
+    finance_enum_variant(MARKET_TYPE_ENUM, MARKET_TYPES, variant)
+}
+
+/// Date-effective schedule data for a calendar family.
+#[derive(Clone, Debug)]
+pub struct CalendarSchedule {
+    pub effective_start: NaiveDate,
+    pub weekmask: [bool; 7],
+    pub rules: Vec<HolidayRule>,
+    pub trading_hours: Option<TradingHours>,
+}
+
+impl CalendarSchedule {
+    pub fn new(
+        effective_start: NaiveDate,
+        weekmask: [bool; 7],
+        rules: Vec<HolidayRule>,
+        trading_hours: Option<TradingHours>,
+    ) -> Self {
+        Self {
+            effective_start,
+            weekmask,
+            rules,
+            trading_hours,
+        }
+    }
+}
+
+struct ResolvedSchedule<'a> {
+    weekmask: &'a [bool; 7],
+    rules: &'a [HolidayRule],
+    trading_hours: Option<&'a TradingHours>,
+}
 
 /// A holiday calendar with optional trading hours and a market classification.
 pub struct Calendar {
     pub name: String,
-    pub market_type: MarketType,
+    /// One of the `MARKET_TYPES` entries, aligned with `finance-enums` `MarketType` variants.
+    pub market_type: &'static str,
     pub weekmask: [bool; 7],
     pub rules: Vec<HolidayRule>,
     pub trading_hours: Option<TradingHours>,
+    pub schedules: Vec<CalendarSchedule>,
     /// Days when the venue closes earlier than usual. Each rule resolves to
     /// at most one date per year, paired with a local close time that
     /// replaces the normal session close on that date.
@@ -125,12 +139,18 @@ impl Calendar {
         rules: Vec<HolidayRule>,
         trading_hours: Option<TradingHours>,
     ) -> Self {
-        Self::with_type(name, MarketType::Equity, weekmask, rules, trading_hours)
+        Self::with_type(
+            name,
+            market_type("Equities"),
+            weekmask,
+            rules,
+            trading_hours,
+        )
     }
 
     pub fn with_type(
         name: impl Into<String>,
-        market_type: MarketType,
+        market_type: &'static str,
         weekmask: [bool; 7],
         rules: Vec<HolidayRule>,
         trading_hours: Option<TradingHours>,
@@ -141,6 +161,7 @@ impl Calendar {
             weekmask,
             rules,
             trading_hours,
+            schedules: Vec::new(),
             early_closes: Vec::new(),
             cache: HolidayCache::default(),
             early_cache: EarlyCloseCache::default(),
@@ -151,6 +172,47 @@ impl Calendar {
     pub fn with_early_closes(mut self, ec: Vec<EarlyCloseRule>) -> Self {
         self.early_closes = ec;
         self
+    }
+
+    /// Builder: attach date-effective schedules sorted by effective date.
+    pub fn with_schedules(mut self, mut schedules: Vec<CalendarSchedule>) -> Self {
+        schedules.sort_by_key(|s| s.effective_start);
+        self.schedules = schedules;
+        self.cache = HolidayCache::default();
+        self.early_cache = EarlyCloseCache::default();
+        self
+    }
+
+    fn schedule_for(&self, date: NaiveDate) -> ResolvedSchedule<'_> {
+        let mut selected = None;
+        for schedule in &self.schedules {
+            if schedule.effective_start <= date {
+                selected = Some(schedule);
+            } else {
+                break;
+            }
+        }
+        match selected {
+            Some(schedule) => ResolvedSchedule {
+                weekmask: &schedule.weekmask,
+                rules: &schedule.rules,
+                trading_hours: schedule.trading_hours.as_ref(),
+            },
+            None => ResolvedSchedule {
+                weekmask: &self.weekmask,
+                rules: &self.rules,
+                trading_hours: self.trading_hours.as_ref(),
+            },
+        }
+    }
+
+    fn is_holiday_uncached(&self, date: NaiveDate) -> bool {
+        let schedule = self.schedule_for(date);
+        schedule
+            .rules
+            .iter()
+            .flat_map(|rule| rule.dates_in(date.year()))
+            .any(|holiday| holiday == date)
     }
 
     /// Cached map of `date -> local early-close time` for the given year.
@@ -164,7 +226,7 @@ impl Calendar {
                 // Only register if the resulting date is itself a business
                 // day (skip rolled-into-weekend cases).
                 let i = d.weekday().num_days_from_monday() as usize;
-                if !self.weekmask[i] {
+                if !self.schedule_for(d).weekmask[i] {
                     continue;
                 }
                 if self.holidays(year).contains(&d) {
@@ -188,9 +250,12 @@ impl Calendar {
             return h;
         }
         let mut set = BTreeSet::new();
-        for r in &self.rules {
-            for d in r.dates_in(year) {
-                set.insert(d);
+        if let Some(mut d) = NaiveDate::from_ymd_opt(year, 1, 1) {
+            while d.year() == year {
+                if self.is_holiday_uncached(d) {
+                    set.insert(d);
+                }
+                d += Duration::days(1);
             }
         }
         let arc = Arc::new(set);
@@ -216,39 +281,57 @@ impl Calendar {
 
     pub fn is_business_day(&self, d: NaiveDate) -> bool {
         let i = d.weekday().num_days_from_monday() as usize;
-        self.weekmask[i] && !self.is_holiday(d)
+        self.schedule_for(d).weekmask[i] && !self.is_holiday(d)
     }
 
     pub fn next_business_day(&self, d: NaiveDate) -> NaiveDate {
-        let years = [d.year(), d.year() + 1];
-        let mut h = BTreeSet::new();
-        for y in years {
-            for x in self.holidays(y).iter() {
-                h.insert(*x);
+        let mut x = d + Duration::days(1);
+        loop {
+            if self.is_business_day(x) {
+                return x;
             }
+            x += Duration::days(1);
         }
-        next_business_day(d, &self.weekmask, &h)
     }
 
     pub fn previous_business_day(&self, d: NaiveDate) -> NaiveDate {
-        let years = [d.year() - 1, d.year()];
-        let mut h = BTreeSet::new();
-        for y in years {
-            for x in self.holidays(y).iter() {
-                h.insert(*x);
+        let mut x = d - Duration::days(1);
+        loop {
+            if self.is_business_day(x) {
+                return x;
             }
+            x -= Duration::days(1);
         }
-        previous_business_day(d, &self.weekmask, &h)
     }
 
     pub fn business_days_between(&self, start: NaiveDate, end: NaiveDate) -> i64 {
-        let h = self.holidays_between(start, end);
-        business_days_between(start, end, &self.weekmask, &h)
+        if end < start {
+            return 0;
+        }
+        let mut n = 0;
+        let mut d = start;
+        while d <= end {
+            if self.is_business_day(d) {
+                n += 1;
+            }
+            d += Duration::days(1);
+        }
+        n
     }
 
     pub fn business_day_range(&self, start: NaiveDate, end: NaiveDate) -> Vec<NaiveDate> {
-        let h = self.holidays_between(start, end);
-        business_day_range(start, end, &self.weekmask, &h)
+        if end < start {
+            return Vec::new();
+        }
+        let mut out = Vec::with_capacity(((end - start).num_days() as usize).saturating_add(1));
+        let mut d = start;
+        while d <= end {
+            if self.is_business_day(d) {
+                out.push(d);
+            }
+            d += Duration::days(1);
+        }
+        out
     }
 
     /// True iff the venue is currently in any trading session.
@@ -268,6 +351,9 @@ impl Calendar {
             if !self.is_business_day(trading_day) {
                 continue;
             }
+            let Some(th) = self.schedule_for(trading_day).trading_hours else {
+                continue;
+            };
             let early = self.early_close_for(trading_day);
             let last_idx = th.sessions.len().saturating_sub(1);
             for (i, s) in th.sessions.iter().enumerate() {
@@ -297,6 +383,9 @@ impl Calendar {
             if !self.is_business_day(trading_day) {
                 continue;
             }
+            let Some(th) = self.schedule_for(trading_day).trading_hours else {
+                continue;
+            };
             for s in &th.sessions {
                 if let Some((o, _)) = s.instants(th.timezone, trading_day) {
                     if o >= when {
@@ -316,6 +405,9 @@ impl Calendar {
             if !self.is_business_day(trading_day) {
                 continue;
             }
+            let Some(th) = self.schedule_for(trading_day).trading_hours else {
+                continue;
+            };
             let early = self.early_close_for(trading_day);
             let last_idx = th.sessions.len().saturating_sub(1);
             for (i, s) in th.sessions.iter().enumerate() {
@@ -347,14 +439,15 @@ impl Calendar {
         start: NaiveDate,
         end: NaiveDate,
     ) -> Vec<(DateTime<Utc>, DateTime<Utc>)> {
-        let Some(th) = &self.trading_hours else {
-            return Vec::new();
-        };
         let mut out = Vec::new();
-        let last_idx = th.sessions.len().saturating_sub(1);
         let mut d = start;
         while d <= end {
             if self.is_business_day(d) {
+                let Some(th) = self.schedule_for(d).trading_hours else {
+                    d += Duration::days(1);
+                    continue;
+                };
+                let last_idx = th.sessions.len().saturating_sub(1);
                 let early = self.early_close_for(d);
                 for (i, s) in th.sessions.iter().enumerate() {
                     let Some((o, mut c)) = s.instants(th.timezone, d) else {
@@ -382,13 +475,14 @@ impl Calendar {
         start: NaiveDate,
         end: NaiveDate,
     ) -> Vec<(&'static str, DateTime<Utc>, DateTime<Utc>)> {
-        let Some(th) = &self.trading_hours else {
-            return Vec::new();
-        };
         let mut out = Vec::new();
         let mut d = start;
         while d <= end {
             if self.is_business_day(d) {
+                let Some(th) = self.schedule_for(d).trading_hours else {
+                    d += Duration::days(1);
+                    continue;
+                };
                 let early = self.early_close_for(d);
                 for s in &th.extended_sessions {
                     let Some((mut o, c)) = s.session.instants(th.timezone, d) else {
@@ -443,7 +537,7 @@ fn adjust_close(
     Some(close.with_timezone(&Utc))
 }
 
-// ---------- Holiday rule constructors ----------
+// Holiday rule constructors
 
 fn fixed(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
     HolidayRule::Fixed {
@@ -479,7 +573,7 @@ fn easter(offset_days: i32) -> HolidayRule {
     }
 }
 
-// ---------- Built-in calendars ----------
+// Built-in calendars
 
 fn nyse_rules() -> Vec<HolidayRule> {
     vec![
@@ -550,14 +644,58 @@ fn cme_globex_overnight_hours() -> TradingHours {
     )
 }
 
-/// CME Globex energy & metals: 17:00 prev — 16:00 today CT (with one-hour
-/// daily break that this layer treats as a single contiguous session).
+/// CME Globex energy & metals: 17:00 prev — 16:00 today CT. The 16:00-17:00
+/// daily maintenance break appears as the gap before the next trading day's
+/// overnight session. CME WTI Crude Oil contract specs page checked 2026-05-25.
 fn cme_globex_energy_hours() -> TradingHours {
     TradingHours::from_sessions(
         vec![Session::overnight(
             NaiveTime::from_hms_opt(17, 0, 0).unwrap(),
             NaiveTime::from_hms_opt(16, 0, 0).unwrap(),
         )],
+        chrono_tz::America::Chicago,
+    )
+}
+
+/// CBOT grain and oilseed futures: evening session 19:00 prev — 07:45 today CT,
+/// then day session 08:30 — 13:20 CT. This models the common agricultural
+/// futures split rather than the broad CME financial-futures template. CME Corn
+/// contract specs page checked 2026-05-25.
+fn cbot_grain_futures_hours() -> TradingHours {
+    TradingHours::from_sessions(
+        vec![
+            Session {
+                open: NaiveTime::from_hms_opt(19, 0, 0).unwrap(),
+                open_day_offset: -1,
+                close: NaiveTime::from_hms_opt(7, 45, 0).unwrap(),
+                close_day_offset: 0,
+            },
+            Session::regular(
+                NaiveTime::from_hms_opt(8, 30, 0).unwrap(),
+                NaiveTime::from_hms_opt(13, 20, 0).unwrap(),
+            ),
+        ],
+        chrono_tz::America::Chicago,
+    )
+}
+
+/// CME livestock futures (Live Cattle / Feeder Cattle / Lean Hogs):
+/// 08:30-13:05 CT regular trading session. Source: local
+/// `cme/Trading Hours Export.xlsx` row set for LE/GF/HE captured 2026-05-25.
+fn cme_livestock_hours() -> TradingHours {
+    TradingHours::new(
+        NaiveTime::from_hms_opt(8, 30, 0).unwrap(),
+        NaiveTime::from_hms_opt(13, 5, 0).unwrap(),
+        chrono_tz::America::Chicago,
+    )
+}
+
+/// CME lumber futures regular session: 09:00-15:05 CT.
+/// Source: local `cme/Trading Hours Export.xlsx` row for LBR captured 2026-05-25.
+fn cme_lumber_hours() -> TradingHours {
+    TradingHours::new(
+        NaiveTime::from_hms_opt(9, 0, 0).unwrap(),
+        NaiveTime::from_hms_opt(15, 5, 0).unwrap(),
         chrono_tz::America::Chicago,
     )
 }
@@ -681,12 +819,45 @@ fn tse_rules() -> Vec<HolidayRule> {
     ]
 }
 
-fn tse_trading_hours() -> TradingHours {
-    TradingHours::new(
-        NaiveTime::from_hms_opt(9, 0, 0).unwrap(),
-        NaiveTime::from_hms_opt(15, 0, 0).unwrap(),
+fn tse_trading_hours_with_afternoon_close(close: NaiveTime) -> TradingHours {
+    TradingHours::from_sessions(
+        vec![
+            Session::regular(
+                NaiveTime::from_hms_opt(9, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(11, 30, 0).unwrap(),
+            ),
+            Session::regular(NaiveTime::from_hms_opt(12, 30, 0).unwrap(), close),
+        ],
         chrono_tz::Asia::Tokyo,
     )
+}
+
+fn tse_trading_hours() -> TradingHours {
+    // JPX domestic stock auction trading since 2024-11-05: morning
+    // 09:00-11:30, afternoon 12:30-15:30. Source checked 2026-05-25.
+    tse_trading_hours_with_afternoon_close(NaiveTime::from_hms_opt(15, 30, 0).unwrap())
+}
+
+fn tse_historical_trading_hours() -> TradingHours {
+    // JPX domestic stock auction trading before the 2024-11-05 close extension.
+    tse_trading_hours_with_afternoon_close(NaiveTime::from_hms_opt(15, 0, 0).unwrap())
+}
+
+fn tse_schedules() -> Vec<CalendarSchedule> {
+    vec![
+        CalendarSchedule::new(
+            NaiveDate::from_ymd_opt(1900, 1, 1).unwrap(),
+            STANDARD_WEEKMASK,
+            tse_rules(),
+            Some(tse_historical_trading_hours()),
+        ),
+        CalendarSchedule::new(
+            NaiveDate::from_ymd_opt(2024, 11, 5).unwrap(),
+            STANDARD_WEEKMASK,
+            tse_rules(),
+            Some(tse_trading_hours()),
+        ),
+    ]
 }
 
 fn hkex_rules() -> Vec<HolidayRule> {
@@ -717,9 +888,19 @@ fn hkex_rules() -> Vec<HolidayRule> {
 }
 
 fn hkex_trading_hours() -> TradingHours {
-    TradingHours::new(
-        NaiveTime::from_hms_opt(9, 30, 0).unwrap(),
-        NaiveTime::from_hms_opt(16, 0, 0).unwrap(),
+    // HKEX securities market continuous trading: morning 09:30-12:00,
+    // afternoon 13:00-16:00. Source checked 2026-05-25.
+    TradingHours::from_sessions(
+        vec![
+            Session::regular(
+                NaiveTime::from_hms_opt(9, 30, 0).unwrap(),
+                NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
+            ),
+            Session::regular(
+                NaiveTime::from_hms_opt(13, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(16, 0, 0).unwrap(),
+            ),
+        ],
         chrono_tz::Asia::Hong_Kong,
     )
 }
@@ -749,9 +930,20 @@ fn sse_rules() -> Vec<HolidayRule> {
 }
 
 fn sse_trading_hours() -> TradingHours {
-    TradingHours::new(
-        NaiveTime::from_hms_opt(9, 30, 0).unwrap(),
-        NaiveTime::from_hms_opt(15, 0, 0).unwrap(),
+    // SSE stocks: continuous auction 09:30-11:30 and 13:00-14:57,
+    // followed by the 14:57-15:00 closing call auction; modeled as an
+    // afternoon regular session through 15:00. Source checked 2026-05-25.
+    TradingHours::from_sessions(
+        vec![
+            Session::regular(
+                NaiveTime::from_hms_opt(9, 30, 0).unwrap(),
+                NaiveTime::from_hms_opt(11, 30, 0).unwrap(),
+            ),
+            Session::regular(
+                NaiveTime::from_hms_opt(13, 0, 0).unwrap(),
+                NaiveTime::from_hms_opt(15, 0, 0).unwrap(),
+            ),
+        ],
         chrono_tz::Asia::Shanghai,
     )
 }
@@ -858,7 +1050,7 @@ fn nse_trading_hours() -> TradingHours {
     )
 }
 
-// ---------- Early-close rule helpers ----------
+// Early-close rule helpers
 
 fn ec(rule: HolidayRule, h: u32, m: u32) -> EarlyCloseRule {
     EarlyCloseRule {
@@ -907,7 +1099,7 @@ fn nyse_early_closes() -> Vec<EarlyCloseRule> {
     ]
 }
 
-// ---------- Additional non-US equity calendars ----------
+// Additional non-US equity calendars
 
 /// Generic European Christian-calendar holidays: NY, Good Friday,
 /// Easter Monday, May Day, Christmas, Boxing Day. Used as a baseline.
@@ -1319,7 +1511,7 @@ fn xdub_hours() -> TradingHours {
     )
 }
 
-// ---------- Asia / Pacific ----------
+// Asia / Pacific
 
 fn xkrx_rules() -> Vec<HolidayRule> {
     // Korea Exchange: tabulated lunar holidays (Seollal, Chuseok). For
@@ -1607,7 +1799,7 @@ fn xnze_hours() -> TradingHours {
     )
 }
 
-// ---------- EMEA ----------
+// EMEA
 
 fn xjse_rules() -> Vec<HolidayRule> {
     // Johannesburg: NY, Human Rights (Mar 21), Good Fri, Family Day (Easter
@@ -1853,7 +2045,7 @@ fn xdfm_hours() -> TradingHours {
     )
 }
 
-// ---------- LatAm ----------
+// LatAm
 
 fn bvmf_rules() -> Vec<HolidayRule> {
     // B3 / BMF Bovespa (São Paulo): NY, Carnival Mon (-48), Carnival Tue (-47),
@@ -2039,7 +2231,7 @@ fn xbog_hours() -> TradingHours {
     )
 }
 
-// ---------- Calendar family resolver ----------
+// Calendar family resolver
 
 /// Logical calendar family. Many MICs share a family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2049,6 +2241,9 @@ enum Family {
     UsBondSifma,
     UsFuturesCme,
     UsFuturesCmeEnergy,
+    UsFuturesCbotGrains,
+    UsFuturesCmeLivestock,
+    UsFuturesCmeLumber,
     UsFuturesIce,
     UsFuturesCfe,
     Forex24x5,
@@ -2109,17 +2304,41 @@ fn family_for_mic(mic: &str) -> Option<Family> {
         | "XPOR" | "XNFI" | "EDGA" | "EDGD" | "EDGX" | "EDDP" | "EDGO" | "BATS"
         | "BZXD" | "BATO" | "BATY" | "BYXD" | "MEMX" | "MEMD" | "IEXG" | "LTSE"
         | "MIHI" | "MPRL" | "EPRL" | "EPRD" | "XMIO" | "EMLD"
-        // OTC / FINRA — share the NYSE holiday calendar
+        // Over-the-counter and Financial Industry Regulatory Authority venues share the NYSE holiday calendar
         | "OTCM" | "CAVE" | "OTCB" | "OTCQ" | "PINL" | "PINI" | "PINX" | "PSGM"
         | "PINC" | "FINR" | "FINN" | "FINC" | "FINY" | "XADF" | "FINO" | "OOTC"
         // Synthetic / placeholder venues
         | "XXXX" | "PYPR" | "SIMU" => UsEquity,
         // US options
         "XISE" | "GMNI" | "MCRY" | "XCBO" | "C2OX" | "MXOP" | "OPRA" => UsOptions,
-        // US futures: CME group equity-index/FX/financials
-        "XCME" | "FCME" | "GLBX" | "XCBT" | "FCBT" | "XKBT" => UsFuturesCme,
-        // NYMEX (energy/metals) lives under CME group too but with energy hours
-        "XNYM" => UsFuturesCmeEnergy,
+        // US futures: CME group equity-index/FX/financials. We also route
+        // category-level synthetic aliases from CME's Globex filter buckets
+        // to this baseline template when no product-specific schedule is
+        // modeled yet.
+        "XCME" | "FCME" | "GLBX" | "XCBT" | "FCBT" | "XKBT"
+        // Product-level aliases that use the baseline overnight template.
+        | "SR3" | "ES" | "NQ" | "RTY"
+        | "CME_DAIRY" | "GLOBEX_DAIRY" => UsFuturesCme,
+        // Product-level aliases for livestock daytime sessions.
+        "LE" | "GF" | "HE" | "CME_LIVESTOCK" | "GLOBEX_LIVESTOCK" => {
+            UsFuturesCmeLivestock
+        }
+        // Product-level aliases for lumber daytime sessions.
+        "LBR" | "LS" | "CME_LUMBER" | "GLOBEX_LUMBER" => UsFuturesCmeLumber,
+        // NYMEX (energy/metals) lives under CME group too but with energy hours.
+        "XNYM" | "NYMEX_ENERGY" | "COMEX_METALS"
+        // Product-level energy/metals aliases.
+        | "CL" | "MCL" | "QM" | "GC" | "MGC" | "QO"
+        | "CME_ENERGY" | "GLOBEX_ENERGY"
+        | "CME_METALS" | "GLOBEX_METALS" => UsFuturesCmeEnergy,
+        // Synthetic product-group calendars for materially different CBOT
+        // agricultural hours.
+        "CBOT_GRAINS" | "CME_GRAINS" | "GLOBEX_GRAINS"
+        // Product-level grain/oilseed aliases.
+        | "ZC" | "ZW" | "ZS" | "ZL" | "ZM" | "ZO" | "KE" | "HRS"
+        | "CBOT_OILSEEDS" | "CBOT_WHEAT" | "CBOT_CORN" | "CBOT_SOYBEANS" => {
+            UsFuturesCbotGrains
+        }
         // CFE / ICE / SIFMA / FX / Crypto generic families
         "CFE" => UsFuturesCfe,
         "ICE_US" => UsFuturesIce,
@@ -2135,7 +2354,7 @@ fn family_for_mic(mic: &str) -> Option<Family> {
         "XTKS" => Tse,
         "XHKG" => Hkex,
         "XSHG" => Sse,
-        "XEUR" | "XFRA" => Xetra,
+        "21XX" | "XEUR" | "XFRA" => Xetra,
         "XPAR" => EuronextParis,
         "XAMS" => EuronextAms,
         "XBRU" => EuronextBru,
@@ -2184,7 +2403,7 @@ fn build_family(name: &str, fam: Family) -> Calendar {
     match fam {
         UsEquity => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             nyse_rules(),
             Some(nyse_trading_hours()),
@@ -2192,7 +2411,7 @@ fn build_family(name: &str, fam: Family) -> Calendar {
         .with_early_closes(nyse_early_closes()),
         UsOptions => Calendar::with_type(
             name,
-            MarketType::Options,
+            market_type("Options"),
             STANDARD_WEEKMASK,
             nyse_rules(),
             Some(options_trading_hours()),
@@ -2200,357 +2419,379 @@ fn build_family(name: &str, fam: Family) -> Calendar {
         .with_early_closes(nyse_early_closes()),
         UsBondSifma => Calendar::with_type(
             name,
-            MarketType::Bond,
+            market_type("FixedIncome"),
             STANDARD_WEEKMASK,
             sifma_us_rules(),
             Some(sifma_us_hours()),
         ),
         UsFuturesCme => Calendar::with_type(
             name,
-            MarketType::Futures,
+            market_type("Futures"),
             STANDARD_WEEKMASK,
             cme_globex_rules(),
             Some(cme_globex_overnight_hours()),
         ),
         UsFuturesCmeEnergy => Calendar::with_type(
             name,
-            MarketType::Futures,
+            market_type("Futures"),
             STANDARD_WEEKMASK,
             cme_globex_rules(),
             Some(cme_globex_energy_hours()),
         ),
+        UsFuturesCbotGrains => Calendar::with_type(
+            name,
+            market_type("Futures"),
+            STANDARD_WEEKMASK,
+            cme_globex_rules(),
+            Some(cbot_grain_futures_hours()),
+        ),
+        UsFuturesCmeLivestock => Calendar::with_type(
+            name,
+            market_type("Futures"),
+            STANDARD_WEEKMASK,
+            cme_globex_rules(),
+            Some(cme_livestock_hours()),
+        ),
+        UsFuturesCmeLumber => Calendar::with_type(
+            name,
+            market_type("Futures"),
+            STANDARD_WEEKMASK,
+            cme_globex_rules(),
+            Some(cme_lumber_hours()),
+        ),
         UsFuturesIce => Calendar::with_type(
             name,
-            MarketType::Futures,
+            market_type("Futures"),
             STANDARD_WEEKMASK,
             ice_us_rules(),
             Some(ice_us_hours()),
         ),
         UsFuturesCfe => Calendar::with_type(
             name,
-            MarketType::Futures,
+            market_type("Futures"),
             STANDARD_WEEKMASK,
             cfe_rules(),
             Some(cfe_trading_hours()),
         ),
         Forex24x5 => Calendar::with_type(
             name,
-            MarketType::Fx,
+            market_type("ForeignExchange"),
             STANDARD_WEEKMASK,
             forex_rules(),
             Some(TradingHours::forex_24x5()),
         ),
         Crypto24x7 => Calendar::with_type(
             name,
-            MarketType::Crypto,
+            market_type("DigitalAssets"),
             CRYPTO_WEEKMASK,
             crypto_rules(),
             Some(TradingHours::crypto_24x7()),
         ),
         Lse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             lse_rules(),
             Some(lse_trading_hours()),
         ),
         Tse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             tse_rules(),
             Some(tse_trading_hours()),
-        ),
+        )
+        .with_schedules(tse_schedules()),
         Hkex => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             hkex_rules(),
             Some(hkex_trading_hours()),
         ),
         Sse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             sse_rules(),
             Some(sse_trading_hours()),
         ),
         Xetra => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xetra_rules(),
             Some(xetra_trading_hours()),
         ),
         EuronextParis => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             euronext_paris_rules(),
             Some(euronext_paris_trading_hours()),
         ),
         EuronextAms => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xams_rules(),
             Some(euronext_hours(chrono_tz::Europe::Amsterdam)),
         ),
         EuronextBru => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xbru_rules(),
             Some(euronext_hours(chrono_tz::Europe::Brussels)),
         ),
         EuronextLis => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xlis_rules(),
             Some(euronext_hours(chrono_tz::Europe::Lisbon)),
         ),
         EuronextDub => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xdub_rules(),
             Some(xdub_hours()),
         ),
         Tsx => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             tsx_rules(),
             Some(tsx_trading_hours()),
         ),
         Asx => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             asx_rules(),
             Some(asx_trading_hours()),
         ),
         Nse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             nse_rules(),
             Some(nse_trading_hours()),
         ),
         Xmil => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xmil_rules(),
             Some(xmil_hours()),
         ),
         Xmad => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xmad_rules(),
             Some(xmad_hours()),
         ),
         Xswx => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xswx_rules(),
             Some(xswx_hours()),
         ),
         Xosl => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xosl_rules(),
             Some(xosl_hours()),
         ),
         Xsto => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xsto_rules(),
             Some(xsto_hours()),
         ),
         Xhel => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xhel_rules(),
             Some(xhel_hours()),
         ),
         Xcse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xcse_rules(),
             Some(xcse_hours()),
         ),
         Xice => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xice_rules(),
             Some(xice_hours()),
         ),
         Xwar => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xwar_rules(),
             Some(xwar_hours()),
         ),
         Xpra => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xpra_rules(),
             Some(xpra_hours()),
         ),
         Xbud => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xbud_rules(),
             Some(xbud_hours()),
         ),
         Xwbo => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xwbo_rules(),
             Some(xwbo_hours()),
         ),
         Xkrx => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xkrx_rules(),
             Some(xkrx_hours()),
         ),
         Xses => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xses_rules(),
             Some(xses_hours()),
         ),
         Xtai => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xtai_rules(),
             Some(xtai_hours()),
         ),
         Xbkk => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xbkk_rules(),
             Some(xbkk_hours()),
         ),
         Xkls => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xkls_rules(),
             Some(xkls_hours()),
         ),
         Xidx => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xidx_rules(),
             Some(xidx_hours()),
         ),
         Xphs => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xphs_rules(),
             Some(xphs_hours()),
         ),
         Xnze => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xnze_rules(),
             Some(xnze_hours()),
         ),
         Xjse => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xjse_rules(),
             Some(xjse_hours()),
         ),
         Xsau => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             MIDEAST_WEEKMASK,
             xsau_rules(),
             Some(xsau_hours()),
         ),
         Xist => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xist_rules(),
             Some(xist_hours()),
         ),
         Xtae => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             TASE_WEEKMASK,
             xtae_rules(),
             Some(xtae_hours()),
         ),
         Xdfm => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xdfm_rules(),
             Some(xdfm_hours()),
         ),
         Bvmf => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             bvmf_rules(),
             Some(bvmf_hours()),
         ),
         Xmex => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xmex_rules(),
             Some(xmex_hours()),
         ),
         Xbue => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xbue_rules(),
             Some(xbue_hours()),
         ),
         Xsgo => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xsgo_rules(),
             Some(xsgo_hours()),
         ),
         Xlim => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xlim_rules(),
             Some(xlim_hours()),
         ),
         Xbog => Calendar::with_type(
             name,
-            MarketType::Equity,
+            market_type("Equities"),
             STANDARD_WEEKMASK,
             xbog_rules(),
             Some(xbog_hours()),
@@ -2562,60 +2803,198 @@ fn build_family(name: &str, fam: Family) -> Calendar {
 /// `FOREX`, `CRYPTO`, `SIFMA_US`, `ICE_US`, `CFE`). Returns `None` if unknown.
 pub fn calendar_for_exchange(code: &str) -> Option<Calendar> {
     let upper = code.to_ascii_uppercase();
-    let fam = family_for_mic(&upper)?;
-    Some(build_family(&upper, fam))
+    if let Some(fam) = family_for_mic(&upper) {
+        return Some(build_family(&upper, fam));
+    }
+
+    let record = finance_enums::data::exchange_record(&upper)?;
+    if let Some(mut calendar) = calendar_for_region(record.iso_country_code) {
+        calendar.name = upper;
+        return Some(calendar);
+    }
+
+    Some(Calendar::with_type(
+        upper,
+        market_type_for_exchange_record(record),
+        STANDARD_WEEKMASK,
+        Vec::new(),
+        None,
+    ))
 }
 
-/// Build a calendar from a region code. Returns `None` if unknown.
+fn market_type_for_exchange_record(record: &finance_enums::data::ExchangeRecord) -> &'static str {
+    match record.market_category_code {
+        "IDQS" | "NSPD" | "OTFS" | "SINT" => market_type("OverTheCounter"),
+        _ => market_type("Equities"),
+    }
+}
+
+/// Build a calendar from a country code. Returns `None` if unknown.
 pub fn calendar_for_region(code: &str) -> Option<Calendar> {
-    match code.to_ascii_uppercase().as_str() {
-        "US" => calendar_for_exchange("XNYS"),
-        "UK" | "GB" => calendar_for_exchange("XLON"),
-        "JP" => calendar_for_exchange("XTKS"),
-        "HK" => calendar_for_exchange("XHKG"),
-        "CN" => calendar_for_exchange("XSHG"),
-        "DE" | "EU" => calendar_for_exchange("XFRA"),
-        "FR" => calendar_for_exchange("XPAR"),
-        "CA" => calendar_for_exchange("XTSE"),
-        "AU" => calendar_for_exchange("XASX"),
-        "IN" => calendar_for_exchange("XNSE"),
-        "NL" => calendar_for_exchange("XAMS"),
-        "BE" => calendar_for_exchange("XBRU"),
-        "PT" => calendar_for_exchange("XLIS"),
-        "IT" => calendar_for_exchange("XMIL"),
-        "ES" => calendar_for_exchange("XMAD"),
-        "CH" => calendar_for_exchange("XSWX"),
-        "NO" => calendar_for_exchange("XOSL"),
-        "SE" => calendar_for_exchange("XSTO"),
-        "FI" => calendar_for_exchange("XHEL"),
-        "DK" => calendar_for_exchange("XCSE"),
-        "IS" => calendar_for_exchange("XICE"),
-        "PL" => calendar_for_exchange("XWAR"),
-        "CZ" => calendar_for_exchange("XPRA"),
-        "HU" => calendar_for_exchange("XBUD"),
-        "AT" => calendar_for_exchange("XWBO"),
-        "IE" => calendar_for_exchange("XDUB"),
-        "KR" => calendar_for_exchange("XKRX"),
-        "SG" => calendar_for_exchange("XSES"),
-        "TW" => calendar_for_exchange("XTAI"),
-        "TH" => calendar_for_exchange("XBKK"),
-        "MY" => calendar_for_exchange("XKLS"),
-        "ID" => calendar_for_exchange("XIDX"),
-        "PH" => calendar_for_exchange("XPHS"),
-        "NZ" => calendar_for_exchange("XNZE"),
-        "ZA" => calendar_for_exchange("XJSE"),
-        "SA" => calendar_for_exchange("XSAU"),
-        "TR" => calendar_for_exchange("XIST"),
-        "IL" => calendar_for_exchange("XTAE"),
-        "AE" => calendar_for_exchange("XDFM"),
-        "BR" => calendar_for_exchange("BVMF"),
-        "MX" => calendar_for_exchange("XMEX"),
-        "AR" => calendar_for_exchange("XBUE"),
-        "CL" => calendar_for_exchange("XSGO"),
-        "PE" => calendar_for_exchange("XLIM"),
-        "CO" => calendar_for_exchange("XBOG"),
+    let upper = code.to_ascii_uppercase();
+    if !COUNTRY_CODES.contains(&upper.as_str()) && !COUNTRY_CODES3.contains(&upper.as_str()) {
+        return None;
+    }
+    match upper.as_str() {
+        "US" | "USA" => calendar_for_exchange("XNYS"),
+        "GB" | "GBR" => calendar_for_exchange("XLON"),
+        "JP" | "JPN" => calendar_for_exchange("XTKS"),
+        "HK" | "HKG" => calendar_for_exchange("XHKG"),
+        "CN" | "CHN" => calendar_for_exchange("XSHG"),
+        "DE" | "DEU" => calendar_for_exchange("XFRA"),
+        "FR" | "FRA" => calendar_for_exchange("XPAR"),
+        "CA" | "CAN" => calendar_for_exchange("XTSE"),
+        "AU" | "AUS" => calendar_for_exchange("XASX"),
+        "IN" | "IND" => calendar_for_exchange("XNSE"),
+        "NL" | "NLD" => calendar_for_exchange("XAMS"),
+        "BE" | "BEL" => calendar_for_exchange("XBRU"),
+        "PT" | "PRT" => calendar_for_exchange("XLIS"),
+        "IT" | "ITA" => calendar_for_exchange("XMIL"),
+        "ES" | "ESP" => calendar_for_exchange("XMAD"),
+        "CH" | "CHE" => calendar_for_exchange("XSWX"),
+        "NO" | "NOR" => calendar_for_exchange("XOSL"),
+        "SE" | "SWE" => calendar_for_exchange("XSTO"),
+        "FI" | "FIN" => calendar_for_exchange("XHEL"),
+        "DK" | "DNK" => calendar_for_exchange("XCSE"),
+        "IS" | "ISL" => calendar_for_exchange("XICE"),
+        "PL" | "POL" => calendar_for_exchange("XWAR"),
+        "CZ" | "CZE" => calendar_for_exchange("XPRA"),
+        "HU" | "HUN" => calendar_for_exchange("XBUD"),
+        "AT" | "AUT" => calendar_for_exchange("XWBO"),
+        "IE" | "IRL" => calendar_for_exchange("XDUB"),
+        "KR" | "KOR" => calendar_for_exchange("XKRX"),
+        "SG" | "SGP" => calendar_for_exchange("XSES"),
+        "TW" | "TWN" => calendar_for_exchange("XTAI"),
+        "TH" | "THA" => calendar_for_exchange("XBKK"),
+        "MY" | "MYS" => calendar_for_exchange("XKLS"),
+        "ID" | "IDN" => calendar_for_exchange("XIDX"),
+        "PH" | "PHL" => calendar_for_exchange("XPHS"),
+        "NZ" | "NZL" => calendar_for_exchange("XNZE"),
+        "ZA" | "ZAF" => calendar_for_exchange("XJSE"),
+        "SA" | "SAU" => calendar_for_exchange("XSAU"),
+        "TR" | "TUR" => calendar_for_exchange("XIST"),
+        "IL" | "ISR" => calendar_for_exchange("XTAE"),
+        "AE" | "ARE" => calendar_for_exchange("XDFM"),
+        "BR" | "BRA" => calendar_for_exchange("BVMF"),
+        "MX" | "MEX" => calendar_for_exchange("XMEX"),
+        "AR" | "ARG" => calendar_for_exchange("XBUE"),
+        "CL" | "CHL" => calendar_for_exchange("XSGO"),
+        "PE" | "PER" => calendar_for_exchange("XLIM"),
+        "CO" | "COL" => calendar_for_exchange("XBOG"),
         _ => None,
     }
+}
+
+/// Build a calendar for a specific product at a given exchange.
+///
+/// `exchange` is an exchange MIC (or a synthetic alias such as `FOREX` or
+/// `CRYPTO`); `product` is a variant name from the `finance-enums`
+/// commodity/instrument sub-type enums, e.g. `"NaturalGas"`, `"Corn"`,
+/// `"Gold"`, `"Cattle"`.  When the exchange+product pair matches a
+/// product-specific schedule the result calendar is named
+/// `"<EXCHANGE>:<product>"`.  When no product-specific match is found the
+/// call falls back to `calendar_for_exchange(exchange)`.
+pub fn calendar_for_product(exchange: &str, product: &str) -> Option<Calendar> {
+    use Family::*;
+    let exch = exchange.to_ascii_uppercase();
+    let fam: Option<Family> = match (exch.as_str(), product) {
+        // ── NYMEX / COMEX ──────────────────────────────────────────────
+        // Energy (CL, QM, NG, HO, RB, PRP, UX, etc.)
+        ("XNYM", "Crude")
+        | ("XNYM", "NaturalGas")
+        | ("XNYM", "HeatingOil")
+        | ("XNYM", "Gasoline")
+        | ("XNYM", "LiquefiedNaturalGas")
+        | ("XNYM", "Propane")
+        | ("XNYM", "Electricity")
+        | ("XNYM", "Uranium")
+        | ("XNYM", "Energy") => Some(UsFuturesCmeEnergy),
+        // Metals (GC, SI, HG, PL, PA, AL…)
+        ("XNYM", "Gold")
+        | ("XNYM", "Silver")
+        | ("XNYM", "Copper")
+        | ("XNYM", "Platinum")
+        | ("XNYM", "Palladium")
+        | ("XNYM", "Aluminum")
+        | ("XNYM", "Zinc")
+        | ("XNYM", "Nickel")
+        | ("XNYM", "Lead")
+        | ("XNYM", "Tin")
+        | ("XNYM", "Steel")
+        | ("XNYM", "Cobalt")
+        | ("XNYM", "Iron")
+        | ("XNYM", "Metals") => Some(UsFuturesCmeEnergy),
+
+        // ── CBOT grains / oilseeds ─────────────────────────────────────
+        ("XCBT", "Corn")
+        | ("XCBT", "Wheat")
+        | ("XCBT", "Soybean")
+        | ("XCBT", "Oats")
+        | ("XCBT", "Soy")
+        | ("XCBT", "Agriculture")
+        | ("XCBT", "Softs") => Some(UsFuturesCbotGrains),
+
+        // ── CME livestock ──────────────────────────────────────────────
+        ("XCME", "Cattle") | ("XCME", "Feeder") | ("XCME", "Hogs") | ("XCME", "Livestock") => {
+            Some(UsFuturesCmeLivestock)
+        }
+
+        // ── CME lumber ─────────────────────────────────────────────────
+        ("XCME", "Lumber") => Some(UsFuturesCmeLumber),
+
+        // ── ICE US (softs + Brent crude) ──────────────────────────────
+        ("ICE_US", "Sugar")
+        | ("ICE_US", "Coffee")
+        | ("ICE_US", "Cocoa")
+        | ("ICE_US", "Cotton")
+        | ("ICE_US", "OrangeJuice")
+        | ("ICE_US", "Crude")
+        | ("ICE_US", "NaturalGas")
+        | ("ICE_US", "Energy")
+        | ("ICE_US", "Softs")
+        | ("ICE_US", "Agriculture") => Some(UsFuturesIce),
+
+        // ── no product-specific override; fall through ─────────────────
+        _ => None,
+    };
+
+    if let Some(family) = fam {
+        let name = format!("{}:{}", exch, product);
+        Some(build_family(&name, family))
+    } else {
+        calendar_for_exchange(exchange)
+    }
+}
+
+fn is_known_asset_label(value: &str) -> bool {
+    UNDERLYING_ASSET_CLASSES.contains(&value)
+        || COMMODITY_TYPES.contains(&value)
+        || ENERGY_TYPES.contains(&value)
+        || METALS_TYPES.contains(&value)
+        || AGRICULTURE_TYPES.contains(&value)
+        || matches!(value, "Feeder")
+}
+
+/// Build a calendar from an exchange and finance-enums asset vocabulary.
+///
+/// `asset_class` and optional `subclass` are canonical finance-enums variant
+/// names, such as `UnderlyingAssetClass::Commodity` plus
+/// `EnergyType::NaturalGas`, or simply `UnderlyingAssetClass::Equity` for a
+/// broad exchange calendar. When a subclass is provided it chooses the product
+/// schedule; otherwise `asset_class` is used directly.
+pub fn calendar_for_asset(
+    exchange: &str,
+    asset_class: &str,
+    subclass: Option<&str>,
+) -> Option<Calendar> {
+    if !is_known_asset_label(asset_class) {
+        return None;
+    }
+    let product = subclass.unwrap_or(asset_class);
+    if !is_known_asset_label(product) {
+        return None;
+    }
+    calendar_for_product(exchange, product)
 }
 
 #[cfg(test)]
@@ -2657,6 +3036,9 @@ mod tests {
     fn region_us_resolves_to_xnys() {
         let cal = calendar_for_region("US").unwrap();
         assert_eq!(cal.name, "XNYS");
+        assert_eq!(calendar_for_region("USA").unwrap().name, "XNYS");
+        assert!(calendar_for_region("EU").is_none());
+        assert!(calendar_for_region("UK").is_none());
     }
 
     #[test]
@@ -2688,7 +3070,7 @@ mod tests {
     fn cme_futures_open_sunday_evening() {
         // CME equity-index futures: Sun 18:00 CT should be in Mon's session.
         let cal = calendar_for_exchange("XCME").unwrap();
-        assert_eq!(cal.market_type, MarketType::Futures);
+        assert_eq!(cal.market_type, market_type("Futures"));
         let inst = chrono_tz::America::Chicago
             .with_ymd_and_hms(2024, 1, 7, 18, 0, 0)
             .unwrap()
@@ -2705,7 +3087,7 @@ mod tests {
     #[test]
     fn nymex_energy_uses_chicago_tz() {
         let cal = calendar_for_exchange("XNYM").unwrap();
-        assert_eq!(cal.market_type, MarketType::Futures);
+        assert_eq!(cal.market_type, market_type("Futures"));
         // Mon 09:00 CT → in session (started Sun 17:00 CT).
         let inst = chrono_tz::America::Chicago
             .with_ymd_and_hms(2024, 1, 8, 9, 0, 0)
@@ -2715,9 +3097,149 @@ mod tests {
     }
 
     #[test]
+    fn nymex_energy_daily_maintenance_break_is_closed() {
+        let cal = calendar_for_exchange("XNYM").unwrap();
+        let maintenance_break = chrono_tz::America::Chicago
+            .with_ymd_and_hms(2024, 1, 8, 16, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let next_trade_date_open = chrono_tz::America::Chicago
+            .with_ymd_and_hms(2024, 1, 8, 17, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert!(!cal.is_open(maintenance_break));
+        assert_eq!(cal.next_open(maintenance_break), Some(next_trade_date_open));
+    }
+
+    #[test]
+    fn cbot_grain_futures_expose_overnight_and_day_sessions() {
+        let cal = calendar_for_exchange("CBOT_GRAINS").unwrap();
+        assert_eq!(cal.market_type, market_type("Futures"));
+        let th = cal.trading_hours.as_ref().unwrap();
+        let actual: Vec<_> = th
+            .sessions
+            .iter()
+            .map(|session| {
+                (
+                    (
+                        session.open.hour(),
+                        session.open.minute(),
+                        session.open_day_offset,
+                    ),
+                    (
+                        session.close.hour(),
+                        session.close.minute(),
+                        session.close_day_offset,
+                    ),
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            actual,
+            vec![((19, 0, -1), (7, 45, 0)), ((8, 30, 0), (13, 20, 0))]
+        );
+
+        let morning_break = chrono_tz::America::Chicago
+            .with_ymd_and_hms(2024, 1, 8, 8, 0, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let day_open = chrono_tz::America::Chicago
+            .with_ymd_and_hms(2024, 1, 8, 8, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let day_close = chrono_tz::America::Chicago
+            .with_ymd_and_hms(2024, 1, 8, 13, 20, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert!(!cal.is_open(morning_break));
+        assert_eq!(cal.next_open(morning_break), Some(day_open));
+        assert_eq!(cal.next_close(morning_break), Some(day_close));
+    }
+
+    #[test]
+    fn commodity_category_aliases_resolve_to_expected_templates() {
+        for code in [
+            "CBOT_OILSEEDS",
+            "CBOT_WHEAT",
+            "CBOT_CORN",
+            "CBOT_SOYBEANS",
+            "GLOBEX_GRAINS",
+            "ZC",
+            "ZW",
+            "ZS",
+            "ZL",
+            "ZM",
+            "ZO",
+            "KE",
+            "HRS",
+        ] {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            assert_eq!(th.sessions.len(), 2, "{code}");
+            assert_eq!(th.sessions[0].open.hour(), 19, "{code}");
+            assert_eq!(th.sessions[0].open_day_offset, -1, "{code}");
+            assert_eq!(th.sessions[1].open.hour(), 8, "{code}");
+            assert_eq!(th.sessions[1].open.minute(), 30, "{code}");
+        }
+
+        for code in [
+            "CME_ENERGY",
+            "GLOBEX_ENERGY",
+            "CME_METALS",
+            "GLOBEX_METALS",
+            "CL",
+            "MCL",
+            "QM",
+            "GC",
+            "MGC",
+            "QO",
+        ] {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            assert_eq!(th.sessions.len(), 1, "{code}");
+            assert_eq!(th.sessions[0].open.hour(), 17, "{code}");
+            assert_eq!(th.sessions[0].open_day_offset, -1, "{code}");
+            assert_eq!(th.sessions[0].close.hour(), 16, "{code}");
+        }
+
+        for code in ["CME_DAIRY", "GLOBEX_DAIRY", "SR3", "ES", "NQ", "RTY"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            assert_eq!(th.sessions.len(), 1, "{code}");
+            assert_eq!(th.sessions[0].open.hour(), 17, "{code}");
+            assert_eq!(th.sessions[0].open_day_offset, -1, "{code}");
+            assert_eq!(th.sessions[0].close.hour(), 16, "{code}");
+        }
+
+        for code in ["CME_LIVESTOCK", "GLOBEX_LIVESTOCK", "LE", "GF", "HE"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            assert_eq!(th.sessions.len(), 1, "{code}");
+            assert_eq!(th.sessions[0].open.hour(), 8, "{code}");
+            assert_eq!(th.sessions[0].open.minute(), 30, "{code}");
+            assert_eq!(th.sessions[0].open_day_offset, 0, "{code}");
+            assert_eq!(th.sessions[0].close.hour(), 13, "{code}");
+            assert_eq!(th.sessions[0].close.minute(), 5, "{code}");
+        }
+
+        for code in ["CME_LUMBER", "GLOBEX_LUMBER", "LBR", "LS"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            assert_eq!(th.sessions.len(), 1, "{code}");
+            assert_eq!(th.sessions[0].open.hour(), 9, "{code}");
+            assert_eq!(th.sessions[0].open_day_offset, 0, "{code}");
+            assert_eq!(th.sessions[0].close.hour(), 15, "{code}");
+            assert_eq!(th.sessions[0].close.minute(), 5, "{code}");
+        }
+    }
+
+    #[test]
     fn cfe_classifies_as_futures() {
         let cal = calendar_for_exchange("CFE").unwrap();
-        assert_eq!(cal.market_type, MarketType::Futures);
+        assert_eq!(cal.market_type, market_type("Futures"));
         // Wed 09:00 CT — open.
         let inst = chrono_tz::America::Chicago
             .with_ymd_and_hms(2024, 1, 10, 9, 0, 0)
@@ -2729,7 +3251,7 @@ mod tests {
     #[test]
     fn forex_open_tuesday_3am() {
         let cal = calendar_for_exchange("FOREX").unwrap();
-        assert_eq!(cal.market_type, MarketType::Fx);
+        assert_eq!(cal.market_type, market_type("ForeignExchange"));
         let inst = chrono_tz::America::New_York
             .with_ymd_and_hms(2024, 1, 9, 3, 0, 0)
             .unwrap()
@@ -2740,7 +3262,7 @@ mod tests {
     #[test]
     fn crypto_open_saturday_3am() {
         let cal = calendar_for_exchange("CRYPTO").unwrap();
-        assert_eq!(cal.market_type, MarketType::Crypto);
+        assert_eq!(cal.market_type, market_type("DigitalAssets"));
         let inst = chrono_tz::UTC
             .with_ymd_and_hms(2024, 1, 13, 3, 0, 0)
             .unwrap()
@@ -2751,7 +3273,7 @@ mod tests {
     #[test]
     fn options_close_at_1615() {
         let cal = calendar_for_exchange("OPRA").unwrap();
-        assert_eq!(cal.market_type, MarketType::Options);
+        assert_eq!(cal.market_type, market_type("Options"));
         let inst = chrono_tz::America::New_York
             .with_ymd_and_hms(2024, 1, 8, 16, 10, 0)
             .unwrap()
@@ -2762,7 +3284,7 @@ mod tests {
     #[test]
     fn sifma_includes_columbus_and_veterans() {
         let cal = calendar_for_exchange("SIFMA_US").unwrap();
-        assert_eq!(cal.market_type, MarketType::Bond);
+        assert_eq!(cal.market_type, market_type("FixedIncome"));
         // Veterans Day 2024 = Mon Nov 11.
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 11, 11).unwrap()));
         // Columbus Day 2024 = 2nd Mon Oct = Oct 14.
@@ -2782,13 +3304,13 @@ mod tests {
 
     #[test]
     fn all_exchange_codes_resolve() {
+        let mut missing = Vec::new();
         for code in EXCHANGE_CODES {
-            assert!(
-                calendar_for_exchange(code).is_some(),
-                "MIC {} did not resolve",
-                code
-            );
+            if calendar_for_exchange(code).is_none() {
+                missing.push(*code);
+            }
         }
+        assert!(missing.is_empty(), "unresolved MICs: {missing:?}");
     }
 
     #[test]
@@ -2801,9 +3323,52 @@ mod tests {
     }
 
     #[test]
+    fn market_type_variants_match_finance_enum_values() {
+        let expected: &[&str] = &[
+            "Equities",
+            "FixedIncome",
+            "ForeignExchange",
+            "Commodities",
+            "Derivatives",
+            "Options",
+            "Futures",
+            "Funds",
+            "DigitalAssets",
+            "OverTheCounter",
+        ];
+        assert_eq!(MARKET_TYPES, expected);
+        assert!(!MARKET_TYPES.contains(&"Other"));
+    }
+
+    #[test]
+    fn market_type_lookup_uses_finance_enum_variant_names() {
+        assert_eq!(market_type("Options"), "Options");
+        assert_eq!(market_type("Futures"), "Futures");
+        assert!(MARKET_TYPES.contains(&market_type("Options")));
+    }
+
+    #[test]
+    fn calendar_for_asset_uses_finance_enum_asset_names() {
+        let gas = calendar_for_asset("XNYM", "Commodity", Some("NaturalGas")).unwrap();
+        assert_eq!(gas.market_type, market_type("Futures"));
+        assert_eq!(gas.name, "XNYM:NaturalGas");
+
+        let grains = calendar_for_asset("XCBT", "Agriculture", None).unwrap();
+        assert_eq!(grains.market_type, market_type("Futures"));
+        assert_eq!(grains.name, "XCBT:Agriculture");
+        assert_eq!(grains.trading_hours.unwrap().sessions.len(), 2);
+
+        let equity = calendar_for_asset("XNYS", "Equity", None).unwrap();
+        assert_eq!(equity.market_type, market_type("Equities"));
+        assert_eq!(equity.name, "XNYS");
+
+        assert!(calendar_for_asset("XNYS", "NotAnAssetClass", None).is_none());
+    }
+
+    #[test]
     fn otc_inherits_nyse_holidays() {
         let cal = calendar_for_exchange("PINX").unwrap();
-        assert_eq!(cal.market_type, MarketType::Equity);
+        assert_eq!(cal.market_type, market_type("Equities"));
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 7, 4).unwrap()));
     }
 
@@ -2891,6 +3456,7 @@ mod tests {
     fn region_br_resolves_to_bvmf() {
         let cal = calendar_for_region("BR").unwrap();
         assert_eq!(cal.name, "BVMF");
+        assert_eq!(calendar_for_region("BRA").unwrap().name, "BVMF");
     }
 
     #[test]
@@ -2898,6 +3464,111 @@ mod tests {
         let cal = calendar_for_exchange("XNZE").unwrap();
         // Feb 6 2024 = Tuesday.
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 2, 6).unwrap()));
+    }
+
+    #[test]
+    fn apac_lunch_break_calendars_expose_split_sessions() {
+        let cases = [
+            ("XTKS", vec![((9, 0), (11, 30)), ((12, 30), (15, 30))]),
+            ("XHKG", vec![((9, 30), (12, 0)), ((13, 0), (16, 0))]),
+            ("XSHG", vec![((9, 30), (11, 30)), ((13, 0), (15, 0))]),
+        ];
+
+        for (code, expected) in cases {
+            let cal = calendar_for_exchange(code).unwrap();
+            let th = cal.trading_hours.as_ref().unwrap();
+            let actual: Vec<_> = th
+                .sessions
+                .iter()
+                .map(|session| {
+                    (
+                        (session.open.hour(), session.open.minute()),
+                        (session.close.hour(), session.close.minute()),
+                    )
+                })
+                .collect();
+            assert_eq!(actual, expected, "{code} sessions");
+        }
+    }
+
+    #[test]
+    fn tokyo_lunch_gap_is_closed_and_boundaries_advance() {
+        let cal = calendar_for_exchange("XTKS").unwrap();
+        let lunch_gap = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2026, 5, 25, 11, 45, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let afternoon_open = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2026, 5, 25, 12, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let afternoon_close = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2026, 5, 25, 15, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert!(!cal.is_open(lunch_gap));
+        assert_eq!(cal.next_open(lunch_gap), Some(afternoon_open));
+        assert_eq!(cal.next_close(lunch_gap), Some(afternoon_close));
+
+        let sessions = cal.sessions_between(
+            NaiveDate::from_ymd_opt(2026, 5, 25).unwrap(),
+            NaiveDate::from_ymd_opt(2026, 5, 25).unwrap(),
+        );
+        assert_eq!(sessions.len(), 2);
+    }
+
+    #[test]
+    fn tokyo_uses_historical_close_before_2024_schedule_change() {
+        let cal = calendar_for_exchange("XTKS").unwrap();
+        let before = cal.sessions_between(
+            NaiveDate::from_ymd_opt(2024, 11, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 11, 1).unwrap(),
+        );
+        let after = cal.sessions_between(
+            NaiveDate::from_ymd_opt(2024, 11, 5).unwrap(),
+            NaiveDate::from_ymd_opt(2024, 11, 5).unwrap(),
+        );
+
+        let before_close = before[1].1.with_timezone(&chrono_tz::Asia::Tokyo);
+        let after_close = after[1].1.with_timezone(&chrono_tz::Asia::Tokyo);
+        assert_eq!((before_close.hour(), before_close.minute()), (15, 0));
+        assert_eq!((after_close.hour(), after_close.minute()), (15, 30));
+
+        let old_late_afternoon = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2024, 11, 1, 15, 15, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let current_late_afternoon = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2024, 11, 5, 15, 15, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        assert!(!cal.is_open(old_late_afternoon));
+        assert!(cal.is_open(current_late_afternoon));
+    }
+
+    #[test]
+    fn session_boundaries_are_explicitly_inclusive_for_next_boundaries() {
+        let cal = calendar_for_exchange("XTKS").unwrap();
+        let exact_afternoon_open = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2026, 5, 25, 12, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+        let exact_morning_close = chrono_tz::Asia::Tokyo
+            .with_ymd_and_hms(2026, 5, 25, 11, 30, 0)
+            .unwrap()
+            .with_timezone(&Utc);
+
+        assert!(cal.is_open(exact_afternoon_open));
+        assert_eq!(
+            cal.next_open(exact_afternoon_open),
+            Some(exact_afternoon_open)
+        );
+        assert!(!cal.is_open(exact_morning_close));
+        assert_eq!(
+            cal.next_close(exact_morning_close),
+            Some(exact_morning_close)
+        );
     }
 
     #[test]

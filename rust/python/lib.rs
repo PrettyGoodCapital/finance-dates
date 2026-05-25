@@ -7,8 +7,9 @@ use pyo3::types::{PyAny, PyDate, PyDateTime, PyTzInfo};
 use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 
 use ::finance_dates::{
-    business_day_range as core_business_day_range, calendar_for_exchange, calendar_for_region,
-    date_range as core_date_range, EXCHANGE_CODES, REGION_CODES, STANDARD_WEEKMASK,
+    business_day_range as core_business_day_range, calendar_for_asset, calendar_for_exchange,
+    calendar_for_product, calendar_for_region, date_range as core_date_range, COUNTRY_CODES,
+    COUNTRY_CODES3, EXCHANGE_CODES, STANDARD_WEEKMASK,
 };
 
 fn pydate_to_naive(d: &Bound<'_, PyDate>) -> PyResult<NaiveDate> {
@@ -153,10 +154,44 @@ impl PyCalendar {
     }
 
     #[classmethod]
+    fn from_product(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        exchange: &str,
+        product: &str,
+    ) -> PyResult<Self> {
+        calendar_for_product(exchange, product)
+            .map(Self::from_inner)
+            .ok_or_else(|| {
+                PyValueError::new_err(format!(
+                    "unknown exchange/product combination: {exchange}/{product}"
+                ))
+            })
+    }
+
+    #[classmethod]
+    #[pyo3(signature = (exchange, asset_class, *, subclass = None))]
+    fn from_asset(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        exchange: &str,
+        asset_class: &str,
+        subclass: Option<&str>,
+    ) -> PyResult<Self> {
+        calendar_for_asset(exchange, asset_class, subclass)
+            .map(Self::from_inner)
+            .ok_or_else(|| {
+                let detail = match subclass {
+                    Some(subclass) => format!("{exchange}/{asset_class}/{subclass}"),
+                    None => format!("{exchange}/{asset_class}"),
+                };
+                PyValueError::new_err(format!("unknown exchange/asset combination: {detail}"))
+            })
+    }
+
+    #[classmethod]
     fn from_region(_cls: &Bound<'_, pyo3::types::PyType>, code: &str) -> PyResult<Self> {
         calendar_for_region(code)
             .map(Self::from_inner)
-            .ok_or_else(|| PyValueError::new_err(format!("unknown region code: {code}")))
+            .ok_or_else(|| PyValueError::new_err(format!("unknown country code: {code}")))
     }
 
     #[getter]
@@ -170,7 +205,7 @@ impl PyCalendar {
     #[getter]
     fn market_type(&self) -> PyResult<String> {
         match &self.inner {
-            Some(inner) => Ok(inner.market_type.as_str().to_string()),
+            Some(inner) => Ok(inner.market_type.to_string()),
             None => Ok("range".to_string()),
         }
     }
@@ -432,7 +467,7 @@ impl PyCalendar {
 
     fn __repr__(&self) -> String {
         match &self.inner {
-            Some(inner) => format!("Calendar({}, {})", inner.name, inner.market_type.as_str()),
+            Some(inner) => format!("Calendar({}, {})", inner.name, inner.market_type),
             None => "Calendar(range)".to_string(),
         }
     }
@@ -443,6 +478,7 @@ fn finance_dates(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(date_range, m)?)?;
     m.add_class::<PyCalendar>()?;
     m.add("EXCHANGE_CODES", EXCHANGE_CODES.to_vec())?;
-    m.add("REGION_CODES", REGION_CODES.to_vec())?;
+    m.add("COUNTRY_CODES", COUNTRY_CODES.to_vec())?;
+    m.add("COUNTRY_CODES3", COUNTRY_CODES3.to_vec())?;
     Ok(())
 }
