@@ -68,19 +68,20 @@ extension, so historical dates before that change close at 15:00 local while
 current dates close at 15:30.
 
 Commodity futures can also use split sessions. Prefer `Calendar.from_asset()`
-with `finance-enums` exchange and asset/subclass enum members when you know the
-instrument vocabulary; for example `ExchangeCode.XNYM` plus
-`EnergyType.NaturalGas` resolves to the NYMEX energy template without requiring
-synthetic names like `NYMEX_ENERGY`. Synthetic product-group codes such as
-`CBOT_GRAINS` remain accepted by `from_exchange()` for lower-level calendar
-inspection and compatibility.
+with `finance-enums` exchange and asset/subclass enum members, or their string
+values, when you know the instrument vocabulary; for example
+`ExchangeCode.XNYM` plus `EnergyType.NaturalGas` resolves to the NYMEX energy
+template without requiring synthetic names like `NYMEX_ENERGY`. Synthetic
+product-group codes such as `CBOT_GRAINS` and product mnemonics such as `CL` or
+`ZC` remain accepted by `from_exchange()` for lower-level calendar inspection
+and compatibility.
 
 ### Exchange and country calendars
 
 Calendars can be resolved by exchange/MIC code or by ISO country code:
 
 ```python
-from finance_dates import Calendar, COUNTRY_CODES, COUNTRY_CODES3, EXCHANGE_CODES
+from finance_dates import Calendar
 from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 Calendar.from_exchange("XLON")   # London Stock Exchange
@@ -89,18 +90,14 @@ Calendar.from_exchange("XCME")   # CME futures-style overnight sessions
 Calendar.from_exchange("CBOT_GRAINS")  # CBOT grain/oilseed futures sessions
 Calendar.from_exchange("CME_ENERGY")  # Globex energy-category alias
 Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
+Calendar.from_product("ICE_US", "Sugar")  # ICE US product-specific template
 Calendar.from_exchange("FOREX")  # 24x5 FX family
 Calendar.from_region("US")       # representative US equity calendar
-
-"XNYS" in EXCHANGE_CODES
-"BR" in COUNTRY_CODES
-"BRA" in COUNTRY_CODES3
 ```
 
-`EXCHANGE_CODES` is sourced from `finance-enums`, so the enum package is
-the source of truth for supported exchange identifiers. `COUNTRY_CODES` and
-`COUNTRY_CODES3` are sourced from `finance-enums` as well and represent the
-supported ISO country-code inputs for `Calendar.from_region()`.
+`Calendar.from_exchange()` accepts additional resolver-only
+calendar aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`, and `ZC`; those are
+documented in the Calendars page.
 
 ### Documentation
 
