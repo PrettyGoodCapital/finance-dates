@@ -27,6 +27,7 @@ from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 nyse = Calendar.from_exchange("XNYS")
 gas = Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
+ice_sugar = Calendar.from_product("ICE_US", "Sugar")
 
 trading_days = nyse.business_days(date(2024, 7, 1), date(2024, 7, 5))
 holidays = nyse.holidays(date(2024, 7, 1), date(2024, 9, 30))
@@ -86,14 +87,17 @@ nyse = Calendar.from_exchange("XNYS")
 us = Calendar.from_region("US")
 gas = Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)
 corn = Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclass=AgricultureType.Corn)
+ice_sugar = Calendar.from_product("ICE_US", "Sugar")
 ```
 
 `from_range()` creates a plain date-series calendar. `from_exchange()`
 and `from_region()` create exchange-aware calendars; `from_region()` accepts
-ISO country codes from `COUNTRY_CODES` and `COUNTRY_CODES3`. `from_asset()`
-accepts finance-enums exchange codes, underlying asset classes, commodity types,
-and commodity subclasses; when no product-specific calendar is modeled, it falls
-back to the broad exchange calendar for recognized finance-enums asset labels.
+ISO country codes from `COUNTRY_CODES` and `COUNTRY_CODES3`. `from_product()`
+accepts an exchange code plus a finance-enums product/subtype label such as
+`"NaturalGas"`, `"Corn"`, or `"Sugar"`. `from_asset()` accepts
+finance-enums exchange-code and asset/subclass enum members, or their string
+values; when no product-specific calendar is modeled, it falls back to the broad
+exchange calendar for recognized finance-enums asset labels.
 
 Useful attributes:
 
@@ -262,9 +266,15 @@ from finance_dates import COUNTRY_CODES, COUNTRY_CODES3, EXCHANGE_CODES
 
 len(EXCHANGE_CODES)
 "FOREX" in EXCHANGE_CODES
+"CBOT_GRAINS" in EXCHANGE_CODES  # False; resolver-only alias
 "BR" in COUNTRY_CODES
 "BRA" in COUNTRY_CODES3
 ```
+
+`EXCHANGE_CODES` contains the enum-backed exchange/MIC and generic identifiers
+sourced from `finance-enums`. `Calendar.from_exchange()` accepts all of those
+plus resolver-only calendar aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`,
+and `ZC`.
 
 ______________________________________________________________________
 

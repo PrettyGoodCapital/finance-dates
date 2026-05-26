@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="Calendars" href="CALENDARS.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>API - finance dates v0.1.0</title>
+        <title>API - finance dates v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></div></a>
+      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></span>
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -261,6 +261,7 @@
 
 <span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
 <span class="n">gas</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
+<span class="n">ice_sugar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_product</span><span class="p">(</span><span class="s2">&quot;ICE_US&quot;</span><span class="p">,</span> <span class="s2">&quot;Sugar&quot;</span><span class="p">)</span>
 
 <span class="n">trading_days</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">holidays</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
@@ -452,14 +453,17 @@ exchange holidays matter.</p>
 <span class="n">us</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>
 <span class="n">gas</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
 <span class="n">corn</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XCBT</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Agriculture</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">AgricultureType</span><span class="o">.</span><span class="n">Corn</span><span class="p">)</span>
+<span class="n">ice_sugar</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_product</span><span class="p">(</span><span class="s2">&quot;ICE_US&quot;</span><span class="p">,</span> <span class="s2">&quot;Sugar&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">from_range()</span></code> creates a plain date-series calendar. <code class="docutils literal notranslate"><span class="pre">from_exchange()</span></code>
 and <code class="docutils literal notranslate"><span class="pre">from_region()</span></code> create exchange-aware calendars; <code class="docutils literal notranslate"><span class="pre">from_region()</span></code> accepts
-ISO country codes from <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code>. <code class="docutils literal notranslate"><span class="pre">from_asset()</span></code>
-accepts finance-enums exchange codes, underlying asset classes, commodity types,
-and commodity subclasses; when no product-specific calendar is modeled, it falls
-back to the broad exchange calendar for recognized finance-enums asset labels.</p>
+ISO country codes from <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code>. <code class="docutils literal notranslate"><span class="pre">from_product()</span></code>
+accepts an exchange code plus a finance-enums product/subtype label such as
+<code class="docutils literal notranslate"><span class="pre">&quot;NaturalGas&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;Corn&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;Sugar&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">from_asset()</span></code> accepts
+finance-enums exchange-code and asset/subclass enum members, or their string
+values; when no product-specific calendar is modeled, it falls back to the broad
+exchange calendar for recognized finance-enums asset labels.</p>
 <p>Useful attributes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">nyse</span><span class="o">.</span><span class="n">name</span>         <span class="c1"># &quot;XNYS&quot;</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">market_type</span>  <span class="c1"># &quot;Equities&quot;</span>
@@ -619,10 +623,15 @@ returns <code class="docutils literal notranslate"><span class="pre">(name,</spa
 
 <span class="nb">len</span><span class="p">(</span><span class="n">EXCHANGE_CODES</span><span class="p">)</span>
 <span class="s2">&quot;FOREX&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>
+<span class="s2">&quot;CBOT_GRAINS&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>  <span class="c1"># False; resolver-only alias</span>
 <span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES</span>
 <span class="s2">&quot;BRA&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES3</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code> contains the enum-backed exchange/MIC and generic identifiers
+sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code> accepts all of those
+plus resolver-only calendar aliases such as <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">ZC</span></code>.</p>
 </section>
 </section>
 <hr class="docutils" />
@@ -744,7 +753,7 @@ listed at the top of this page. The native module
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=01f34227"></script>
+</div><script src="../../_static/documentation_options.js?v=938c9ccc"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

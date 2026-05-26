@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API" href="API.html"><link rel="prev" title="finance dates" href="../../index.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Calendars - finance dates v0.1.0</title>
+        <title>Calendars - finance dates v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></div></a>
+      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></span>
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -395,7 +395,7 @@ contracts whose hours differ materially from the broad MIC family.</p>
 <td><p>Includes bond-market holidays such as Columbus Day and Veterans Day</p></td>
 </tr>
 <tr class="row-odd"><td><p>US futures</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">ICE_US</span></code>, <code class="docutils literal notranslate"><span class="pre">CFE</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">ICE_US</span></code>, <code class="docutils literal notranslate"><span class="pre">CFE</span></code>, plus resolver aliases such as <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">LE</span></code>, <code class="docutils literal notranslate"><span class="pre">LBR</span></code></p></td>
 <td><p>Overnight and split futures sessions with market-specific timezone choices</p></td>
 </tr>
 <tr class="row-even"><td><p>Major equities</p></td>
@@ -417,7 +417,8 @@ contracts whose hours differ materially from the broad MIC family.</p>
 <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code> list the supported
 ISO country-code inputs for <code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code>. For product-aware futures
 calendars, prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(exchange,</span> <span class="pre">asset_class,</span> <span class="pre">subclass=...)</span></code>
-with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> enum members over synthetic exchange names.</p>
+with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> enum members, or their string values, over synthetic
+exchange names.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgricultureType</span><span class="p">,</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
@@ -426,168 +427,59 @@ with <code class="docutils literal notranslate"><span class="pre">finance-enums<
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYS</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Equity</span><span class="p">)</span>
 </pre></div>
 </div>
-<section id="commodity-product-calendar-exchange-matrix">
-<h3>Commodity product/calendar/exchange matrix<a class="headerlink" href="#commodity-product-calendar-exchange-matrix" title="Link to this heading">¶</a></h3>
-<p>The table below is the full currently supported commodity mapping used by
-<code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange(...)</span></code> for futures product groups and aliases.</p>
+<section id="futures-product-calendar-exchange-matrix">
+<h3>Futures product/calendar/exchange matrix<a class="headerlink" href="#futures-product-calendar-exchange-matrix" title="Link to this heading">¶</a></h3>
+<p>The table below is the current <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange(...)</span></code> futures mapping
+for product and product-group aliases. Codes in the first column are grouped when
+they share the same resolver family and session template.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Product or exchange code</p></th>
-<th class="head"><p>Exchange family</p></th>
+<tr class="row-odd"><th class="head"><p>Inputs</p></th>
 <th class="head"><p>Calendar template</p></th>
 <th class="head"><p>Local regular sessions</p></th>
-<th class="head"><p>Source status</p></th>
+<th class="head"><p>Notes</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code></p></td>
-<td><p>CME Globex (CME)</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code>, <code class="docutils literal notranslate"><span class="pre">FCME</span></code>, <code class="docutils literal notranslate"><span class="pre">GLBX</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">FCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">XKBT</span></code>, <code class="docutils literal notranslate"><span class="pre">SR3</span></code>, <code class="docutils literal notranslate"><span class="pre">ES</span></code>, <code class="docutils literal notranslate"><span class="pre">NQ</span></code>, <code class="docutils literal notranslate"><span class="pre">RTY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
+<td><p>Baseline CME Globex overnight template; dairy currently shares this template.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">XCBT</span></code></p></td>
-<td><p>CME Globex (CBOT)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XKBT</span></code></p></td>
-<td><p>CME Globex (CBOT)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GLBX</span></code></p></td>
-<td><p>CME Globex synthetic</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XNYM</span></code></p></td>
-<td><p>NYMEX (CME Globex)</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>, <code class="docutils literal notranslate"><span class="pre">MCL</span></code>, <code class="docutils literal notranslate"><span class="pre">QM</span></code>, <code class="docutils literal notranslate"><span class="pre">GC</span></code>, <code class="docutils literal notranslate"><span class="pre">MGC</span></code>, <code class="docutils literal notranslate"><span class="pre">QO</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_METALS</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
+<td><p>NYMEX/COMEX energy and metals template with the daily 16:00-17:00 CT maintenance gap.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code></p></td>
-<td><p>NYMEX synthetic</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code></p></td>
-<td><p>COMEX synthetic</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME Globex schedule text</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code></p></td>
-<td><p>CME category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified open in CME Globex filters; close window inferred from active template</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_ENERGY</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified open in CME Globex filters; close window inferred from active template</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code></p></td>
-<td><p>CME category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified open in CME Globex filters; close window inferred from active template</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_METALS</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified open in CME Globex filters; close window inferred from active template</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code></p></td>
-<td><p>CBOT product-group synthetic</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">ZW</span></code>, <code class="docutils literal notranslate"><span class="pre">ZS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZM</span></code>, <code class="docutils literal notranslate"><span class="pre">ZO</span></code>, <code class="docutils literal notranslate"><span class="pre">KE</span></code>, <code class="docutils literal notranslate"><span class="pre">HRS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME grain specs and Globex category open</p></td>
+<td><p>CBOT grain/oilseed split template.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code></p></td>
-<td><p>CME category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME grain specs and Globex category open</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Verified from CME grain specs and Globex category open</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code></p></td>
-<td><p>CBOT product-group alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Inherited from grain template; awaiting product-level source table</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code></p></td>
-<td><p>CBOT product-group alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Inherited from grain template; awaiting product-level source table</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code></p></td>
-<td><p>CBOT product-group alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Inherited from grain template; awaiting product-level source table</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code></p></td>
-<td><p>CBOT product-group alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Inherited from grain template; awaiting product-level source table</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code></p></td>
-<td><p>CME category alias</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LE</span></code>, <code class="docutils literal notranslate"><span class="pre">GF</span></code>, <code class="docutils literal notranslate"><span class="pre">HE</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLivestock</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (LE/GF/HE rows)</p></td>
+<td><p>CME livestock daytime template.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLivestock</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (LE/GF/HE rows)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code></p></td>
-<td><p>CME category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (DC/GDK/GNF rows)</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (DC/GDK/GNF rows)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code></p></td>
-<td><p>CME category alias</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LBR</span></code>, <code class="docutils literal notranslate"><span class="pre">LS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLumber</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[(9,</span> <span class="pre">0,</span> <span class="pre">0,</span> <span class="pre">15,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (LBR row)</p></td>
+<td><p>CME lumber daytime template.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
-<td><p>Globex category alias</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLumber</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[(9,</span> <span class="pre">0,</span> <span class="pre">0,</span> <span class="pre">15,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
-<td><p>Source-backed from <code class="docutils literal notranslate"><span class="pre">data/Trading</span> <span class="pre">Hours</span> <span class="pre">Export.xlsx</span></code> (LBR row)</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ICE_US</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesIce</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(20,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">18,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (ET)</p></td>
+<td><p>ICE US energy/softs broad exchange template.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<p>Only enum-backed exchange and generic identifiers are exported by
+<code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code>; many product mnemonics and synthetic product-group names in
+this matrix are resolver-only aliases accepted by <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code>.
+For product-aware code, prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_product(...)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(...)</span></code> when the exchange/product vocabulary is known.</p>
 <p>The baseline CME holiday set used by these futures templates currently captures
 full-closure holidays (New Year’s Day, Good Friday, Christmas). CME product
 holiday notices include many partial closes that remain out of scope until
@@ -680,30 +572,31 @@ describe the local trading-day relationship:</p>
 <p>That tuple means the session opens at 17:00 on the previous local day
 and closes at 16:00 on the trading day.</p>
 <p>NYMEX energy futures use the same Chicago-time Globex template through
-<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(ExchangeCode.XNYM,</span> <span class="pre">UnderlyingAssetClass.Commodity,</span> <span class="pre">subclass=EnergyType.NaturalGas)</span></code> and the lower-level <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code> exchange aliases. The daily 16:00-17:00 CT maintenance window
-is closed; <code class="docutils literal notranslate"><span class="pre">next_open()</span></code> from that gap returns the 17:00 CT open for the next
-trade date.</p>
+<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(ExchangeCode.XNYM,</span> <span class="pre">UnderlyingAssetClass.Commodity,</span> <span class="pre">subclass=EnergyType.NaturalGas)</span></code>, <code class="docutils literal notranslate"><span class="pre">Calendar.from_product(&quot;XNYM&quot;,</span> <span class="pre">&quot;NaturalGas&quot;)</span></code>,
+and lower-level aliases such as <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MCL</span></code>, <code class="docutils literal notranslate"><span class="pre">QM</span></code>, <code class="docutils literal notranslate"><span class="pre">GC</span></code>, <code class="docutils literal notranslate"><span class="pre">MGC</span></code>, and <code class="docutils literal notranslate"><span class="pre">QO</span></code>. The daily 16:00-17:00 CT maintenance
+window is closed; <code class="docutils literal notranslate"><span class="pre">next_open()</span></code> from that gap returns the 17:00 CT open for the
+next trade date.</p>
 <p>For broader category-level parity with CME Globex filters, energy and metals
 aliases also include <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">GLOBEX_METALS</span></code>.</p>
 <p>CBOT grain and oilseed futures have a more unusual split schedule. Use
 <code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(ExchangeCode.XCBT,</span> <span class="pre">UnderlyingAssetClass.Agriculture,</span> <span class="pre">subclass=AgricultureType.Corn)</span></code> when resolving from finance-enums vocabulary, or
-the lower-level synthetic product-group code <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code> / <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code> when
-that distinction matters:</p>
+the lower-level synthetic product-group codes <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, or product mnemonics such as <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">ZW</span></code>, and <code class="docutils literal notranslate"><span class="pre">ZS</span></code> when that
+distinction matters:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>
 <span class="n">grains</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]</span>
 </pre></div>
 </div>
-<p>Equivalent grain/oilseed aliases include <code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code>,
-<code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code>, and <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code> use the daytime livestock session
-(08:30-13:05 CT). <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code> use a daytime lumber session
-(09:00-15:05 CT). <code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code> use the overnight dairy template
-(17:00 previous day to 16:00 trade date CT).</p>
-<p>Synthetic product-group codes are accepted by <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code>, but
-they are not part of the <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> MIC list exported as <code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code>.</p>
+<p>Equivalent grain/oilseed aliases include <code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZM</span></code>, <code class="docutils literal notranslate"><span class="pre">ZO</span></code>, <code class="docutils literal notranslate"><span class="pre">KE</span></code>, and <code class="docutils literal notranslate"><span class="pre">HRS</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code> and the product mnemonics <code class="docutils literal notranslate"><span class="pre">LE</span></code>, <code class="docutils literal notranslate"><span class="pre">GF</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">HE</span></code> use the daytime livestock session (08:30-13:05 CT). <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> /
+<code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code> and <code class="docutils literal notranslate"><span class="pre">LBR</span></code> / <code class="docutils literal notranslate"><span class="pre">LS</span></code> use a daytime lumber session (09:00-15:05 CT).
+<code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code> use the overnight dairy template (17:00 previous
+day to 16:00 trade date CT).</p>
 <section id="source-backed-status-and-remaining-placeholders">
 <h3>Source-backed status and remaining placeholders<a class="headerlink" href="#source-backed-status-and-remaining-placeholders" title="Link to this heading">¶</a></h3>
 <p>This is a current audit of major schedule assumptions and placeholders that are
@@ -718,7 +611,7 @@ still present in the futures layer.</p>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LE</span></code> / <code class="docutils literal notranslate"><span class="pre">GF</span></code> / <code class="docutils literal notranslate"><span class="pre">HE</span></code> / <code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
 <td><p>Routed to 08:30-13:05 CT livestock session</p></td>
 <td><p>Source-backed</p></td>
 <td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
@@ -728,12 +621,12 @@ still present in the futures layer.</p>
 <td><p>Source-backed</p></td>
 <td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LBR</span></code> / <code class="docutils literal notranslate"><span class="pre">LS</span></code> / <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
 <td><p>Routed to 09:00-15:05 CT lumber session</p></td>
 <td><p>Source-backed</p></td>
 <td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code> / <code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code> / <code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code> / <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ZC</span></code> / <code class="docutils literal notranslate"><span class="pre">ZW</span></code> / <code class="docutils literal notranslate"><span class="pre">ZS</span></code> / <code class="docutils literal notranslate"><span class="pre">ZL</span></code> / <code class="docutils literal notranslate"><span class="pre">ZM</span></code> / <code class="docutils literal notranslate"><span class="pre">ZO</span></code> / <code class="docutils literal notranslate"><span class="pre">KE</span></code> / <code class="docutils literal notranslate"><span class="pre">HRS</span></code> and CBOT grain bucket aliases</p></td>
 <td><p>Aliased to shared grain split template</p></td>
 <td><p>Partial</p></td>
 <td><p>Product-level confirmation for exact overnight/day split by contract group</p></td>
@@ -835,7 +728,7 @@ UTC datetimes for clarity.</p></li>
 <li><a class="reference internal" href="#plain-date-series">Plain date series</a></li>
 <li><a class="reference internal" href="#exchange-calendars">Exchange calendars</a></li>
 <li><a class="reference internal" href="#market-families">Market families</a><ul>
-<li><a class="reference internal" href="#commodity-product-calendar-exchange-matrix">Commodity product/calendar/exchange matrix</a></li>
+<li><a class="reference internal" href="#futures-product-calendar-exchange-matrix">Futures product/calendar/exchange matrix</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#valid-and-invalid-date-series">Valid and invalid date series</a></li>
@@ -855,7 +748,7 @@ UTC datetimes for clarity.</p></li>
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=01f34227"></script>
+</div><script src="../../_static/documentation_options.js?v=938c9ccc"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

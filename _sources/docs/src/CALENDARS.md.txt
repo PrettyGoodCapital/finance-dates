@@ -90,21 +90,22 @@ contracts whose hours differ materially from the broad MIC family.
 
 Representative families include:
 
-| Family         | Examples                                                                                                                       | Notes                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| US equities    | `XNYS`, `XNAS`, `BATS`, `IEXG`                                                                                                 | NYSE-style holidays, 09:30-16:00 regular hours, and 04:00-09:30 / 16:00-20:00 extended windows   |
-| US options     | `OPRA`, `XCBO`, `XPHL`                                                                                                         | US options classification and close conventions                                                  |
-| US bonds       | `SIFMA_US`                                                                                                                     | Includes bond-market holidays such as Columbus Day and Veterans Day                              |
-| US futures     | `XCME`, `XCBT`, `XNYM`, `ICE_US`, `CFE`, `CBOT_GRAINS`, `CME_ENERGY`, `CME_METALS`, `CME_LIVESTOCK`, `CME_DAIRY`, `CME_LUMBER` | Overnight and split futures sessions with market-specific timezone choices                       |
-| Major equities | `XLON`, `XTKS`, `XHKG`, `XSHG`, `XEUR`, `XPAR`, `XASX`, `BVMF`                                                                 | Venue-specific holiday rules where implemented; selected APAC venues expose split lunch sessions |
-| FX             | `FOREX`                                                                                                                        | 24x5, Sunday through Friday session family                                                       |
-| Crypto         | `CRYPTO`                                                                                                                       | 24x7 session family                                                                              |
+| Family         | Examples                                                                                                                    | Notes                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| US equities    | `XNYS`, `XNAS`, `BATS`, `IEXG`                                                                                              | NYSE-style holidays, 09:30-16:00 regular hours, and 04:00-09:30 / 16:00-20:00 extended windows   |
+| US options     | `OPRA`, `XCBO`, `XPHL`                                                                                                      | US options classification and close conventions                                                  |
+| US bonds       | `SIFMA_US`                                                                                                                  | Includes bond-market holidays such as Columbus Day and Veterans Day                              |
+| US futures     | `XCME`, `XCBT`, `XNYM`, `ICE_US`, `CFE`, plus resolver aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`, `ZC`, `LE`, `LBR` | Overnight and split futures sessions with market-specific timezone choices                       |
+| Major equities | `XLON`, `XTKS`, `XHKG`, `XSHG`, `XEUR`, `XPAR`, `XASX`, `BVMF`                                                              | Venue-specific holiday rules where implemented; selected APAC venues expose split lunch sessions |
+| FX             | `FOREX`                                                                                                                     | 24x5, Sunday through Friday session family                                                       |
+| Crypto         | `CRYPTO`                                                                                                                    | 24x7 session family                                                                              |
 
 `EXCHANGE_CODES` is exported for discovery and is sourced from
 `finance-enums`. `COUNTRY_CODES` and `COUNTRY_CODES3` list the supported
 ISO country-code inputs for `Calendar.from_region()`. For product-aware futures
 calendars, prefer `Calendar.from_asset(exchange, asset_class, subclass=...)`
-with `finance-enums` enum members over synthetic exchange names.
+with `finance-enums` enum members, or their string values, over synthetic
+exchange names.
 
 ```python
 from finance_dates import Calendar
@@ -115,37 +116,26 @@ Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclas
 Calendar.from_asset(ExchangeCode.XNYS, UnderlyingAssetClass.Equity)
 ```
 
-### Commodity product/calendar/exchange matrix
+### Futures product/calendar/exchange matrix
 
-The table below is the full currently supported commodity mapping used by
-`Calendar.from_exchange(...)` for futures product groups and aliases.
+The table below is the current `Calendar.from_exchange(...)` futures mapping
+for product and product-group aliases. Codes in the first column are grouped when
+they share the same resolver family and session template.
 
-| Product or exchange code | Exchange family              | Calendar template       | Local regular sessions                                | Source status                                                                   |
-| ------------------------ | ---------------------------- | ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `XCME`                   | CME Globex (CME)             | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `XCBT`                   | CME Globex (CBOT)            | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `XKBT`                   | CME Globex (CBOT)            | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `GLBX`                   | CME Globex synthetic         | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `XNYM`                   | NYMEX (CME Globex)           | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `NYMEX_ENERGY`           | NYMEX synthetic              | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `COMEX_METALS`           | COMEX synthetic              | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified from CME Globex schedule text                                          |
-| `CME_ENERGY`             | CME category alias           | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified open in CME Globex filters; close window inferred from active template |
-| `GLOBEX_ENERGY`          | Globex category alias        | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified open in CME Globex filters; close window inferred from active template |
-| `CME_METALS`             | CME category alias           | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified open in CME Globex filters; close window inferred from active template |
-| `GLOBEX_METALS`          | Globex category alias        | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Verified open in CME Globex filters; close window inferred from active template |
-| `CBOT_GRAINS`            | CBOT product-group synthetic | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Verified from CME grain specs and Globex category open                          |
-| `CME_GRAINS`             | CME category alias           | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Verified from CME grain specs and Globex category open                          |
-| `GLOBEX_GRAINS`          | Globex category alias        | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Verified from CME grain specs and Globex category open                          |
-| `CBOT_OILSEEDS`          | CBOT product-group alias     | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Inherited from grain template; awaiting product-level source table              |
-| `CBOT_WHEAT`             | CBOT product-group alias     | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Inherited from grain template; awaiting product-level source table              |
-| `CBOT_CORN`              | CBOT product-group alias     | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Inherited from grain template; awaiting product-level source table              |
-| `CBOT_SOYBEANS`          | CBOT product-group alias     | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | Inherited from grain template; awaiting product-level source table              |
-| `CME_LIVESTOCK`          | CME category alias           | `UsFuturesCmeLivestock` | `[(8, 30, 0, 13, 5, 0)]` (CT)                         | Source-backed from `data/Trading Hours Export.xlsx` (LE/GF/HE rows)             |
-| `GLOBEX_LIVESTOCK`       | Globex category alias        | `UsFuturesCmeLivestock` | `[(8, 30, 0, 13, 5, 0)]` (CT)                         | Source-backed from `data/Trading Hours Export.xlsx` (LE/GF/HE rows)             |
-| `CME_DAIRY`              | CME category alias           | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Source-backed from `data/Trading Hours Export.xlsx` (DC/GDK/GNF rows)           |
-| `GLOBEX_DAIRY`           | Globex category alias        | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Source-backed from `data/Trading Hours Export.xlsx` (DC/GDK/GNF rows)           |
-| `CME_LUMBER`             | CME category alias           | `UsFuturesCmeLumber`    | `[(9, 0, 0, 15, 5, 0)]` (CT)                          | Source-backed from `data/Trading Hours Export.xlsx` (LBR row)                   |
-| `GLOBEX_LUMBER`          | Globex category alias        | `UsFuturesCmeLumber`    | `[(9, 0, 0, 15, 5, 0)]` (CT)                          | Source-backed from `data/Trading Hours Export.xlsx` (LBR row)                   |
+| Inputs                                                                                                                                                     | Calendar template       | Local regular sessions                                | Notes                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `XCME`, `FCME`, `GLBX`, `XCBT`, `FCBT`, `XKBT`, `SR3`, `ES`, `NQ`, `RTY`, `CME_DAIRY`, `GLOBEX_DAIRY`                                                      | `UsFuturesCme`          | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | Baseline CME Globex overnight template; dairy currently shares this template.         |
+| `XNYM`, `NYMEX_ENERGY`, `COMEX_METALS`, `CL`, `MCL`, `QM`, `GC`, `MGC`, `QO`, `CME_ENERGY`, `GLOBEX_ENERGY`, `CME_METALS`, `GLOBEX_METALS`                 | `UsFuturesCmeEnergy`    | `[(17, 0, -1, 16, 0, 0)]` (CT)                        | NYMEX/COMEX energy and metals template with the daily 16:00-17:00 CT maintenance gap. |
+| `CBOT_GRAINS`, `CME_GRAINS`, `GLOBEX_GRAINS`, `ZC`, `ZW`, `ZS`, `ZL`, `ZM`, `ZO`, `KE`, `HRS`, `CBOT_OILSEEDS`, `CBOT_WHEAT`, `CBOT_CORN`, `CBOT_SOYBEANS` | `UsFuturesCbotGrains`   | `[(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]` (CT) | CBOT grain/oilseed split template.                                                    |
+| `LE`, `GF`, `HE`, `CME_LIVESTOCK`, `GLOBEX_LIVESTOCK`                                                                                                      | `UsFuturesCmeLivestock` | `[(8, 30, 0, 13, 5, 0)]` (CT)                         | CME livestock daytime template.                                                       |
+| `LBR`, `LS`, `CME_LUMBER`, `GLOBEX_LUMBER`                                                                                                                 | `UsFuturesCmeLumber`    | `[(9, 0, 0, 15, 5, 0)]` (CT)                          | CME lumber daytime template.                                                          |
+| `ICE_US`                                                                                                                                                   | `UsFuturesIce`          | `[(20, 0, -1, 18, 0, 0)]` (ET)                        | ICE US energy/softs broad exchange template.                                          |
+
+Only enum-backed exchange and generic identifiers are exported by
+`EXCHANGE_CODES`; many product mnemonics and synthetic product-group names in
+this matrix are resolver-only aliases accepted by `Calendar.from_exchange()`.
+For product-aware code, prefer `Calendar.from_product(...)` or
+`Calendar.from_asset(...)` when the exchange/product vocabulary is known.
 
 The baseline CME holiday set used by these futures templates currently captures
 full-closure holidays (New Year's Day, Good Friday, Christmas). CME product
@@ -256,21 +246,21 @@ That tuple means the session opens at 17:00 on the previous local day
 and closes at 16:00 on the trading day.
 
 NYMEX energy futures use the same Chicago-time Globex template through
-`Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity,
-subclass=EnergyType.NaturalGas)` and the lower-level `XNYM`, `NYMEX_ENERGY`,
-and `COMEX_METALS` exchange aliases. The daily 16:00-17:00 CT maintenance window
-is closed; `next_open()` from that gap returns the 17:00 CT open for the next
-trade date.
+`Calendar.from_asset(ExchangeCode.XNYM, UnderlyingAssetClass.Commodity, subclass=EnergyType.NaturalGas)`, `Calendar.from_product("XNYM", "NaturalGas")`,
+and lower-level aliases such as `XNYM`, `NYMEX_ENERGY`, `COMEX_METALS`, `CL`,
+`MCL`, `QM`, `GC`, `MGC`, and `QO`. The daily 16:00-17:00 CT maintenance
+window is closed; `next_open()` from that gap returns the 17:00 CT open for the
+next trade date.
 
 For broader category-level parity with CME Globex filters, energy and metals
 aliases also include `CME_ENERGY`, `GLOBEX_ENERGY`, `CME_METALS`, and
 `GLOBEX_METALS`.
 
 CBOT grain and oilseed futures have a more unusual split schedule. Use
-`Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture,
-subclass=AgricultureType.Corn)` when resolving from finance-enums vocabulary, or
-the lower-level synthetic product-group code `CBOT_GRAINS` / `CME_GRAINS` when
-that distinction matters:
+`Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclass=AgricultureType.Corn)` when resolving from finance-enums vocabulary, or
+the lower-level synthetic product-group codes `CBOT_GRAINS`, `CME_GRAINS`,
+`GLOBEX_GRAINS`, or product mnemonics such as `ZC`, `ZW`, and `ZS` when that
+distinction matters:
 
 ```python
 grains = Calendar.from_exchange("CBOT_GRAINS")
@@ -278,29 +268,27 @@ grains.regular_sessions
 # [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]
 ```
 
-Equivalent grain/oilseed aliases include `GLOBEX_GRAINS`, `CBOT_OILSEEDS`,
-`CBOT_WHEAT`, `CBOT_CORN`, and `CBOT_SOYBEANS`.
+Equivalent grain/oilseed aliases include `CBOT_OILSEEDS`, `CBOT_WHEAT`,
+`CBOT_CORN`, `CBOT_SOYBEANS`, `ZL`, `ZM`, `ZO`, `KE`, and `HRS`.
 
-`CME_LIVESTOCK` / `GLOBEX_LIVESTOCK` use the daytime livestock session
-(08:30-13:05 CT). `CME_LUMBER` / `GLOBEX_LUMBER` use a daytime lumber session
-(09:00-15:05 CT). `CME_DAIRY` / `GLOBEX_DAIRY` use the overnight dairy template
-(17:00 previous day to 16:00 trade date CT).
-
-Synthetic product-group codes are accepted by `Calendar.from_exchange()`, but
-they are not part of the `finance-enums` MIC list exported as `EXCHANGE_CODES`.
+`CME_LIVESTOCK` / `GLOBEX_LIVESTOCK` and the product mnemonics `LE`, `GF`, and
+`HE` use the daytime livestock session (08:30-13:05 CT). `CME_LUMBER` /
+`GLOBEX_LUMBER` and `LBR` / `LS` use a daytime lumber session (09:00-15:05 CT).
+`CME_DAIRY` / `GLOBEX_DAIRY` use the overnight dairy template (17:00 previous
+day to 16:00 trade date CT).
 
 ### Source-backed status and remaining placeholders
 
 This is a current audit of major schedule assumptions and placeholders that are
 still present in the futures layer.
 
-| Area                                                           | Current behavior                                 | Status        | Needed source to remove placeholder                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------ | ------------- | ------------------------------------------------------------------------------------ |
-| `CME_LIVESTOCK` / `GLOBEX_LIVESTOCK`                           | Routed to 08:30-13:05 CT livestock session       | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
-| `CME_DAIRY` / `GLOBEX_DAIRY`                                   | Routed to 17:00-16:00 CT overnight dairy session | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
-| `CME_LUMBER` / `GLOBEX_LUMBER`                                 | Routed to 09:00-15:05 CT lumber session          | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
-| `CBOT_OILSEEDS` / `CBOT_WHEAT` / `CBOT_CORN` / `CBOT_SOYBEANS` | Aliased to shared grain split template           | Partial       | Product-level confirmation for exact overnight/day split by contract group           |
-| CME futures historical transitions                             | Mostly static schedule templates                 | Partial       | Official effective-date change logs for each product family (not just current hours) |
+| Area                                                                                 | Current behavior                                 | Status        | Needed source to remove placeholder                                                  |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------- | ------------------------------------------------------------------------------------ |
+| `LE` / `GF` / `HE` / `CME_LIVESTOCK` / `GLOBEX_LIVESTOCK`                            | Routed to 08:30-13:05 CT livestock session       | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
+| `CME_DAIRY` / `GLOBEX_DAIRY`                                                         | Routed to 17:00-16:00 CT overnight dairy session | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
+| `LBR` / `LS` / `CME_LUMBER` / `GLOBEX_LUMBER`                                        | Routed to 09:00-15:05 CT lumber session          | Source-backed | Optional chapter citation if you want external-link provenance in docs               |
+| `ZC` / `ZW` / `ZS` / `ZL` / `ZM` / `ZO` / `KE` / `HRS` and CBOT grain bucket aliases | Aliased to shared grain split template           | Partial       | Product-level confirmation for exact overnight/day split by contract group           |
+| CME futures historical transitions                                                   | Mostly static schedule templates                 | Partial       | Official effective-date change logs for each product family (not just current hours) |
 
 If you can share authoritative links or chapter extracts for those items, they
 can be promoted from placeholder/partial to source-backed templates.

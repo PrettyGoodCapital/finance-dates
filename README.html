@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>finance dates - finance dates v0.1.0</title>
+        <title>finance dates - finance dates v0.2.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></div></a>
+      <a href="index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
-  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.1.0</code></span>
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.2.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -301,17 +301,18 @@ per regular interval. Tokyo is date-effective around the 2024-11-05 close-time
 extension, so historical dates before that change close at 15:00 local while
 current dates close at 15:30.</p>
 <p>Commodity futures can also use split sessions. Prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_asset()</span></code>
-with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> exchange and asset/subclass enum members when you know the
-instrument vocabulary; for example <code class="docutils literal notranslate"><span class="pre">ExchangeCode.XNYM</span></code> plus
-<code class="docutils literal notranslate"><span class="pre">EnergyType.NaturalGas</span></code> resolves to the NYMEX energy template without requiring
-synthetic names like <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>. Synthetic product-group codes such as
-<code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code> remain accepted by <code class="docutils literal notranslate"><span class="pre">from_exchange()</span></code> for lower-level calendar
-inspection and compatibility.</p>
+with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> exchange and asset/subclass enum members, or their string
+values, when you know the instrument vocabulary; for example
+<code class="docutils literal notranslate"><span class="pre">ExchangeCode.XNYM</span></code> plus <code class="docutils literal notranslate"><span class="pre">EnergyType.NaturalGas</span></code> resolves to the NYMEX energy
+template without requiring synthetic names like <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>. Synthetic
+product-group codes such as <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code> and product mnemonics such as <code class="docutils literal notranslate"><span class="pre">CL</span></code> or
+<code class="docutils literal notranslate"><span class="pre">ZC</span></code> remain accepted by <code class="docutils literal notranslate"><span class="pre">from_exchange()</span></code> for lower-level calendar inspection
+and compatibility.</p>
 </section>
 <section id="exchange-and-country-calendars">
 <h3>Exchange and country calendars<a class="headerlink" href="#exchange-and-country-calendars" title="Link to this heading">¶</a></h3>
 <p>Calendars can be resolved by exchange/MIC code or by ISO country code:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span><span class="p">,</span> <span class="n">COUNTRY_CODES</span><span class="p">,</span> <span class="n">COUNTRY_CODES3</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
 
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XLON&quot;</span><span class="p">)</span>   <span class="c1"># London Stock Exchange</span>
@@ -320,18 +321,14 @@ inspection and compatibility.</p>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>  <span class="c1"># CBOT grain/oilseed futures sessions</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CME_ENERGY&quot;</span><span class="p">)</span>  <span class="c1"># Globex energy-category alias</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_product</span><span class="p">(</span><span class="s2">&quot;ICE_US&quot;</span><span class="p">,</span> <span class="s2">&quot;Sugar&quot;</span><span class="p">)</span>  <span class="c1"># ICE US product-specific template</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;FOREX&quot;</span><span class="p">)</span>  <span class="c1"># 24x5 FX family</span>
 <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>       <span class="c1"># representative US equity calendar</span>
-
-<span class="s2">&quot;XNYS&quot;</span> <span class="ow">in</span> <span class="n">EXCHANGE_CODES</span>
-<span class="s2">&quot;BR&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES</span>
-<span class="s2">&quot;BRA&quot;</span> <span class="ow">in</span> <span class="n">COUNTRY_CODES3</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code> is sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>, so the enum package is
-the source of truth for supported exchange identifiers. <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and
-<code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code> are sourced from <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> as well and represent the
-supported ISO country-code inputs for <code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code> accepts additional resolver-only
+calendar aliases such as <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>, and <code class="docutils literal notranslate"><span class="pre">ZC</span></code>; those are
+documented in the Calendars page.</p>
 </section>
 <section id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h3>
@@ -345,7 +342,7 @@ recipes.</p>
 <p>The Rust library crate is published as <code class="docutils literal notranslate"><span class="pre">finance-dates</span></code> and imported as
 <code class="docutils literal notranslate"><span class="pre">finance_dates</span></code> in Rust code:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[dependencies]</span>
-<span class="n">finance-dates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="n">finance-dates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;0.2.0&quot;</span>
 </pre></div>
 </div>
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">finance_dates</span><span class="p">::{</span><span class="n">calendar_for_exchange</span><span class="p">,</span><span class="w"> </span><span class="n">date_range</span><span class="p">};</span>
@@ -415,7 +412,7 @@ recipes.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=01f34227"></script>
+</div><script src="_static/documentation_options.js?v=938c9ccc"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
