@@ -113,7 +113,7 @@ The Rust library crate is published as `finance-dates` and imported as
 
 ```toml
 [dependencies]
-finance-dates = "0.1.0"
+finance-dates = "0.2.0"
 ```
 
 ```rust
