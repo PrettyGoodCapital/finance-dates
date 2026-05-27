@@ -1,4 +1,4 @@
-name: Copier Updates
+name: Template Updates
 
 on:
   workflow_dispatch:
