@@ -119,6 +119,3 @@ finance-dates = "0.2.0"
 ```rust
 use finance_dates::{calendar_for_exchange, date_range};
 ```
-
-> [!NOTE]
-> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).

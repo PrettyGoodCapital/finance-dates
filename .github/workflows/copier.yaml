@@ -15,3 +15,5 @@ jobs:
     - uses: actions-ext/copier-update@main
       with:
         token: ${{ secrets.WORKFLOW_TOKEN }}
+        title: Automated update
+        branch: updates
