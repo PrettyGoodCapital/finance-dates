@@ -27,6 +27,11 @@ except ImportError:  # pragma: no cover - sphinx fallback
 
 __version__ = "0.2.0"
 
+try:  # optional runtime dependency for expression namespace registration
+    from . import _namespace as _namespace  # noqa: F401
+except ImportError:  # pragma: no cover - polars is optional outside expression use
+    pass
+
 __all__ = [
     "Calendar",
     "COUNTRY_CODES",

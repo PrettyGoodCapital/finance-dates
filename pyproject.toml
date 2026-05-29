@@ -33,6 +33,7 @@ classifiers = [
 
 dependencies = [
     "finance-enums>=0.5.1,<0.6",
+    "polars>=1.0",
 ]
 
 [project.optional-dependencies]
