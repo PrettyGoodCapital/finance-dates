@@ -7,6 +7,8 @@ Python module is a thin re-export layer.
 
 from __future__ import annotations
 
+from .periods import period_grid
+
 try:  # native extension is unavailable in some doc builds
     from .finance_dates import (
         COUNTRY_CODES,
@@ -38,4 +40,5 @@ __all__ = [
     "COUNTRY_CODES3",
     "EXCHANGE_CODES",
     "date_range",
+    "period_grid",
 ]
