@@ -10,14 +10,9 @@ path = "rust/python/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-<<<<<<< before updating
 finance-dates = { path = "./rust", version = "*" }
-pyo3 = { version = "0.28.2", features = ["abi3", "abi3-py310", "extension-module", "multiple-pymethods"] }
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-=======
-finance_dates = { path = "./rust", version = "*" }
 pyo3 = { version = "0.29.0", features = ["abi3", "extension-module", "multiple-pymethods"] }
->>>>>>> after updating
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [profile.release]
 panic = 'abort'
