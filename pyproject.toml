@@ -32,7 +32,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "finance-enums>=0.5.1,<0.6",
+    "finance-enums>=0.5.1,<0.7",
     "polars>=1.0",
 ]
 
