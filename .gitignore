@@ -158,3 +158,6 @@ AGENTS.md
 
 # Fact Sheets
 data
+
+# Calendar drift check artifact
+drift_report.md

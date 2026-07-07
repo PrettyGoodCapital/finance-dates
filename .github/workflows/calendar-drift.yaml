@@ -1,0 +1,67 @@
+name: Calendar Reference Drift
+
+# Non-blocking scheduled check: compares finance-dates calendars against the
+# reference libraries over a future window (past the 2030 curation horizon) and
+# opens/updates a tracking issue when drift is found — typically a curated
+# holiday table that needs extending, or a computable-calendar regression.
+
+on:
+  schedule:
+    # 06:00 UTC on the 1st of each month.
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+    inputs:
+      start_year:
+        description: "First year of the future window"
+        default: "2031"
+      end_year:
+        description: "Last year of the future window"
+        default: "2040"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: calendar-drift
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions-ext/python/setup@main
+        with:
+          version: "3.11"
+
+      - uses: actions-ext/rust/setup@main
+
+      - name: Install dependencies
+        run: make develop
+
+      - name: Check for calendar drift
+        id: drift
+        run: |
+          python scripts/check_calendar_drift.py \
+            --start-year "${{ github.event.inputs.start_year || '2031' }}" \
+            --end-year "${{ github.event.inputs.end_year || '2040' }}"
+
+      - name: Open or update drift issue
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create calendar-drift --color FBCA04 \
+            --description "Reference calendar drift detected by the scheduled check" \
+            --force || true
+          existing=$(gh issue list --state open --label calendar-drift \
+            --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file drift_report.md
+          else
+            gh issue create --title "Calendar reference drift detected" \
+              --label calendar-drift --body-file drift_report.md
+          fi
