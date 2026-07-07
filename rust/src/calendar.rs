@@ -109,6 +109,9 @@ pub enum HolidayAdjustment {
     /// holiday (citizens' holiday). The exchange-only year-end/new-year days
     /// (Jan 2-3, Dec 31) are excluded from this computation.
     Japanese,
+    /// Hong Kong: a general holiday on Sunday is observed on the next day that
+    /// is not already a holiday.
+    HongKong,
 }
 
 /// An early-close rule. `rule` resolves to a date (using the same machinery
@@ -299,8 +302,10 @@ impl Calendar {
                 d += Duration::days(1);
             }
         }
-        if self.adjustment == HolidayAdjustment::Japanese {
-            apply_japanese_adjustment(&mut set);
+        match self.adjustment {
+            HolidayAdjustment::Japanese => apply_japanese_adjustment(&mut set),
+            HolidayAdjustment::HongKong => apply_sunday_substitute(&mut set),
+            HolidayAdjustment::None => {}
         }
         let arc = Arc::new(set);
         self.cache.inner.write().insert(year, arc.clone());
@@ -725,6 +730,22 @@ fn weekday_on_or_before(month: u32, day: u32, weekday: Weekday, since_year: Opti
     }
 }
 
+/// Move each Sunday holiday to the next day that is not already a holiday.
+fn apply_sunday_substitute(set: &mut BTreeSet<NaiveDate>) {
+    let sundays: Vec<NaiveDate> = set
+        .iter()
+        .filter(|d| d.weekday() == Weekday::Sun)
+        .cloned()
+        .collect();
+    for d in sundays {
+        let mut e = d + Duration::days(1);
+        while set.contains(&e) {
+            e += Duration::days(1);
+        }
+        set.insert(e);
+    }
+}
+
 /// Apply Japanese substitute and citizens' holidays to a computed holiday set.
 fn apply_japanese_adjustment(set: &mut BTreeSet<NaiveDate>) {
     let is_exchange_only = |d: &NaiveDate| {
@@ -766,6 +787,37 @@ fn apply_japanese_adjustment(set: &mut BTreeSet<NaiveDate>) {
     national.extend(extra);
 
     set.extend(national);
+}
+
+/// Chinese lunisolar holiday: `month`/`day` (non-leap) plus `offset_days`.
+fn lunar(month: u32, day: u32, offset_days: i64) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Chinese lunisolar holiday effective from `since`.
+fn lunar_since(month: u32, day: u32, offset_days: i64, since: i32) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        since_year: Some(since),
+        until_year: None,
+    }
+}
+
+/// Qingming / Ching Ming festival.
+fn qingming() -> HolidayRule {
+    HolidayRule::Qingming {
+        offset_days: 0,
+        since_year: None,
+        until_year: None,
+    }
 }
 
 /// Colombian Emiliani-law holiday: observed the Monday on or after `month`/`day`.
@@ -1148,31 +1200,42 @@ fn tse_schedules() -> Vec<CalendarSchedule> {
 }
 
 fn hkex_rules() -> Vec<HolidayRule> {
-    let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27),
-        (2021, 2, 12),
-        (2022, 2, 1),
-        (2023, 1, 23),
-        (2024, 2, 12),
-        (2025, 1, 29),
-        (2026, 2, 17),
-        (2027, 2, 8),
-        (2028, 1, 26),
-        (2029, 2, 13),
-        (2030, 2, 4),
-    ];
+    // Recurring HKEX holidays. Lunar dates are computed astronomically; Sunday
+    // closures are moved to the next day by the Hong Kong adjustment. Ad-hoc
+    // severe-weather closures (through 2023, before all-weather trading) are
+    // tabulated separately.
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: lny },
+        fixed_no_roll(1, 1, None),
+        lunar(1, 1, 0), // Lunar New Year day 1
+        lunar(1, 1, 1), // day 2
+        lunar(1, 1, 2), // day 3
+        qingming(),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(7, 1, None),
-        fixed(10, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        lunar_since(4, 8, 0, 1999), // Buddha's Birthday (public holiday since 1999)
+        lunar(5, 5, 0),             // Dragon Boat / Tuen Ng
+        fixed_no_roll(7, 1, None),  // HKSAR Establishment Day
+        lunar(8, 15, 1),            // day after Mid-Autumn Festival
+        fixed_no_roll(10, 1, None), // National Day
+        lunar(9, 9, 0),             // Chung Yeung
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        HolidayRule::Tabulated { table: HKEX_ONE_OFFS },
     ]
 }
+
+/// Ad-hoc HKEX closures: the 2015 WWII 70th-anniversary holiday and typhoon /
+/// black-rainstorm signals (before HKEX moved to all-weather trading in 2024).
+static HKEX_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 9, 3),   // 70th anniversary of the end of WWII
+    (2016, 8, 2),   // Typhoon Nida
+    (2016, 10, 21), // Typhoon Haima
+    (2017, 8, 23),  // Typhoon Hato
+    (2023, 7, 17),  // Typhoon Talim
+    (2023, 9, 1),   // Super Typhoon Saola
+    (2023, 9, 8),   // Black rainstorm
+];
 
 fn hkex_trading_hours() -> TradingHours {
     // HKEX securities market continuous trading: morning 09:30-12:00,
@@ -2889,7 +2952,8 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             hkex_rules(),
             Some(hkex_trading_hours()),
-        ),
+        )
+        .with_adjustment(HolidayAdjustment::HongKong),
         Sse => Calendar::with_type(
             name,
             market_type("Equities"),
