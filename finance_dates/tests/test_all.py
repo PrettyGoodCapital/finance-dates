@@ -155,12 +155,13 @@ def test_nyse_christmas_2022_observed_monday() -> None:
     assert not cal.is_business_day(date(2022, 12, 26))
 
 
-def test_nyse_juneteenth_first_year_2021() -> None:
+def test_nyse_juneteenth_first_year_2022() -> None:
     cal = Calendar.from_exchange("XNYS")
-    # Not a holiday before 2021.
+    # NYSE first observed Juneteenth in 2022; the market was open on 2021-06-18.
     assert not cal.is_holiday(date(2020, 6, 19))
-    # 2021 Jun 19 was Saturday → observed Friday Jun 18.
-    assert cal.is_holiday(date(2021, 6, 18))
+    assert not cal.is_holiday(date(2021, 6, 18))
+    # 2022-06-19 was a Sunday, observed Monday 2022-06-20.
+    assert cal.is_holiday(date(2022, 6, 20))
 
 
 def test_lse_easter_monday_2024() -> None:
@@ -438,22 +439,22 @@ def test_apac_lunch_break_sessions_are_exposed() -> None:
         "XTKS": (
             [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)],
             [
-                (datetime(2026, 5, 25, 0, 0, tzinfo=timezone.utc), datetime(2026, 5, 25, 2, 30, tzinfo=timezone.utc)),
-                (datetime(2026, 5, 25, 3, 30, tzinfo=timezone.utc), datetime(2026, 5, 25, 6, 30, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 0, 0, tzinfo=timezone.utc), datetime(2026, 5, 26, 2, 30, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 3, 30, tzinfo=timezone.utc), datetime(2026, 5, 26, 6, 30, tzinfo=timezone.utc)),
             ],
         ),
         "XHKG": (
             [(9, 30, 0, 12, 0, 0), (13, 0, 0, 16, 0, 0)],
             [
-                (datetime(2026, 5, 25, 1, 30, tzinfo=timezone.utc), datetime(2026, 5, 25, 4, 0, tzinfo=timezone.utc)),
-                (datetime(2026, 5, 25, 5, 0, tzinfo=timezone.utc), datetime(2026, 5, 25, 8, 0, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 1, 30, tzinfo=timezone.utc), datetime(2026, 5, 26, 4, 0, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 5, 0, tzinfo=timezone.utc), datetime(2026, 5, 26, 8, 0, tzinfo=timezone.utc)),
             ],
         ),
         "XSHG": (
             [(9, 30, 0, 11, 30, 0), (13, 0, 0, 15, 0, 0)],
             [
-                (datetime(2026, 5, 25, 1, 30, tzinfo=timezone.utc), datetime(2026, 5, 25, 3, 30, tzinfo=timezone.utc)),
-                (datetime(2026, 5, 25, 5, 0, tzinfo=timezone.utc), datetime(2026, 5, 25, 7, 0, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 1, 30, tzinfo=timezone.utc), datetime(2026, 5, 26, 3, 30, tzinfo=timezone.utc)),
+                (datetime(2026, 5, 26, 5, 0, tzinfo=timezone.utc), datetime(2026, 5, 26, 7, 0, tzinfo=timezone.utc)),
             ],
         ),
     }
@@ -461,7 +462,7 @@ def test_apac_lunch_break_sessions_are_exposed() -> None:
     for code, (templates, windows) in cases.items():
         cal = Calendar.from_exchange(code)
         assert cal.regular_sessions == templates
-        assert cal.sessions(date(2026, 5, 25), date(2026, 5, 25)) == windows
+        assert cal.sessions(date(2026, 5, 26), date(2026, 5, 26)) == windows
 
 
 def test_tokyo_lunch_gap_is_closed_and_boundaries_advance() -> None:
