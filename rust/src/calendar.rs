@@ -577,6 +577,22 @@ fn fixed_no_roll(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
     }
 }
 
+/// Non-rolling fixed date restricted to `[since, until]` inclusive year bounds.
+fn fixed_between(
+    month: u32,
+    day: u32,
+    since_year: Option<i32>,
+    until_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::None,
+        since_year,
+        until_year,
+    }
+}
+
 /// Fixed date rolled forward to Monday when it lands on a weekend (UK/
 /// Commonwealth substitution).
 fn fixed_fwd(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
@@ -1085,17 +1101,25 @@ fn sse_trading_hours() -> TradingHours {
     )
 }
 
+/// One-off Xetra closure: Reformation Day 500th anniversary (nationwide 2017).
+static XETR_ONE_OFFS: &[(i32, u32, u32)] = &[(2017, 10, 31)];
+
 fn xetra_rules() -> Vec<HolidayRule> {
+    // Xetra/Frankfurt: NY, Good Friday, Easter Monday, Labour Day, and the
+    // festive block Dec 24-26 + Dec 31. Whit Monday was observed through 2021;
+    // German Unity Day only 2016-2019.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(10, 3, None),
-        fixed(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-        fixed(12, 31, None),
+        fixed_no_roll(5, 1, None),
+        easter_between(50, None, Some(2021)),   // Whit Monday (until 2021)
+        fixed_between(10, 3, Some(2016), Some(2019)), // German Unity Day (2016-2019)
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated { table: XETR_ONE_OFFS },
     ]
 }
 
@@ -1339,18 +1363,27 @@ fn xmad_hours() -> TradingHours {
 
 fn xswx_rules() -> Vec<HolidayRule> {
     // SIX Swiss: NY, Berchtold (Jan 2), Good Friday, Easter Mon, Labour,
-    // Ascension, Whit Mon, Swiss National (Aug 1), Christmas, Boxing.
+    // Ascension, Whit Mon, Swiss National (Aug 1), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 2, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
         easter(50),
         fixed_no_roll(8, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        // New Year's Eve moves to the preceding Friday when Dec 31 is a weekend.
+        HolidayRule::Fixed {
+            month: 12,
+            day: 31,
+            roll: WeekendRoll::PrecedingFriday,
+            since_year: None,
+            until_year: None,
+        },
     ]
 }
 
@@ -1363,20 +1396,21 @@ fn xswx_hours() -> TradingHours {
 }
 
 fn xosl_rules() -> Vec<HolidayRule> {
-    // Oslo Børs: NY, Maundy Thu (-3), Good Friday, Easter Mon, Labour,
-    // Constitution (May 17), Ascension, Whit Mon, Christmas Eve (half),
-    // Christmas, Boxing, NYE (half).
+    // Oslo Børs: NY, Maundy Thu, Good Friday, Easter Mon, Labour, Constitution
+    // (May 17), Ascension, Whit Mon, festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 17, None),
         easter(39),
         easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1389,20 +1423,21 @@ fn xosl_hours() -> TradingHours {
 }
 
 fn xsto_rules() -> Vec<HolidayRule> {
-    // Stockholm OMX: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Ascension, National Day (Jun 6), Midsummer Eve (Fri before Jun 20-26),
-    // Christmas Eve, Christmas, Boxing, NYE.
+    // Stockholm OMX: NY, Epiphany, Good Friday, Easter Mon, Labour, Ascension,
+    // National Day (Jun 6, since 2005), Midsummer Eve (Fri on/before Jun 25),
+    // festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
-        fixed_no_roll(6, 6, None),
+        fixed_no_roll(6, 6, Some(2005)),
+        weekday_on_or_before(6, 25, Weekday::Fri, None), // Midsummer Eve
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
         fixed_no_roll(12, 31, None),
     ]
 }
@@ -1416,20 +1451,22 @@ fn xsto_hours() -> TradingHours {
 }
 
 fn xhel_rules() -> Vec<HolidayRule> {
-    // Helsinki: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Ascension, Midsummer Eve (skip), Independence Day (Dec 6),
-    // Christmas Eve, Christmas, Boxing.
+    // Helsinki: NY, Epiphany, Good Friday, Easter Mon, Labour, Ascension,
+    // Midsummer Eve (Fri on/before Jun 25), Independence Day (Dec 6),
+    // festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
+        weekday_on_or_before(6, 25, Weekday::Fri, None), // Midsummer Eve
         fixed_no_roll(12, 6, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1443,18 +1480,22 @@ fn xhel_hours() -> TradingHours {
 
 fn xcse_rules() -> Vec<HolidayRule> {
     // Copenhagen: NY, Maundy Thu, Good Friday, Easter Mon, Great Prayer Day
-    // (was Easter+26, abolished 2024), Ascension, Constitution (Jun 5),
-    // Christmas Eve, Christmas, Boxing.
+    // (Easter+26, abolished after 2023), Ascension, Day after Ascension,
+    // Whit Monday, Constitution (Jun 5), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
+        easter_between(26, None, Some(2023)), // Great Prayer Day (until 2023)
         easter(39),
+        easter(40), // Day after Ascension (bank closing day)
+        easter(50), // Whit Monday
         fixed_no_roll(6, 5, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1467,21 +1508,24 @@ fn xcse_hours() -> TradingHours {
 }
 
 fn xice_rules() -> Vec<HolidayRule> {
-    // Iceland: NY, Maundy Thu, Good Fri, Easter Mon, First Day of Summer
-    // (skip), Labour, Ascension, Whit Mon, National Day (Jun 17),
-    // Commerce Day (skip), Christmas Eve, Christmas, Boxing.
+    // Iceland: NY, Maundy Thu, Good Fri, Easter Mon, First Day of Summer (Thu
+    // on/before Apr 25), Labour, Ascension, Whit Mon, National Day (Jun 17),
+    // Commerce Day (1st Mon Aug), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        weekday_on_or_before(4, 25, Weekday::Thu, None), // First Day of Summer
+        fixed_no_roll(5, 1, None),
         easter(39),
         easter(50),
         fixed_no_roll(6, 17, None),
+        nth(8, Weekday::Mon, 1), // Commerce Day
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1577,24 +1621,27 @@ fn xbud_hours() -> TradingHours {
 }
 
 fn xwbo_rules() -> Vec<HolidayRule> {
-    // Vienna (Wiener Börse): NY, Good Friday, Easter Mon, Labour,
-    // Ascension, Whit Mon, Corpus Christi, Assumption, National (Oct 26),
-    // All Saints, Immaculate (Dec 8), Christmas Eve, Christmas, Boxing.
+    // Wiener Börse trimmed its calendar during 2018-2022 to the current set: NY,
+    // Good Friday, Easter Monday, Labour Day, National Day (Oct 26), and the
+    // festive block. Whit Monday was observed through 2022; Corpus Christi,
+    // Assumption, All Saints and Immaculate Conception only through 2018.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        easter(39),
-        easter(50),
-        easter(60),
-        fixed_no_roll(8, 15, None),
-        fixed_no_roll(10, 26, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 8, None),
+        fixed_no_roll(5, 1, None),
+        fixed_between(1, 6, None, Some(2017)), // Epiphany (until 2017)
+        easter_between(39, None, Some(2018)), // Ascension (until 2018)
+        easter_between(50, None, Some(2022)), // Whit Monday (until 2022)
+        easter_between(60, None, Some(2018)), // Corpus Christi (until 2018)
+        fixed_between(8, 15, None, Some(2018)), // Assumption (until 2018)
+        fixed_between(11, 1, None, Some(2018)), // All Saints (until 2018)
+        fixed_between(12, 8, None, Some(2018)), // Immaculate Conception (until 2018)
+        fixed_no_roll(10, 26, None),          // National Day
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 

@@ -15,6 +15,9 @@ pub enum WeekendRoll {
     ForwardMonday,
     /// Sun → Mon only; Saturday holidays are not substituted (South Africa).
     SundayToMonday,
+    /// Sat → Fri, Sun → preceding Fri; a weekend holiday moves to the last
+    /// weekday before it (SIX New Year's Eve).
+    PrecedingFriday,
 }
 
 /// A holiday whose date depends only on the calendar year.
@@ -229,6 +232,11 @@ fn apply_roll(d: NaiveDate, roll: WeekendRoll) -> NaiveDate {
         },
         WeekendRoll::SundayToMonday => match d.weekday() {
             ChronoWeekday::Sun => d + Duration::days(1),
+            _ => d,
+        },
+        WeekendRoll::PrecedingFriday => match d.weekday() {
+            ChronoWeekday::Sat => d - Duration::days(1),
+            ChronoWeekday::Sun => d - Duration::days(2),
             _ => d,
         },
     }
