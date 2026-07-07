@@ -13,6 +13,8 @@ pub enum WeekendRoll {
     NearestWeekday,
     /// Sat → Mon, Sun → Mon (UK/Commonwealth bank-holiday substitution).
     ForwardMonday,
+    /// Sun → Mon only; Saturday holidays are not substituted (South Africa).
+    SundayToMonday,
 }
 
 /// A holiday whose date depends only on the calendar year.
@@ -41,10 +43,14 @@ pub enum HolidayRule {
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
-    /// Christmas Day + Boxing Day with UK/Commonwealth substitution: each rolls
-    /// forward to the next weekday, and Boxing Day is bumped past Christmas Day's
-    /// observed date so the two never collide.
-    ChristmasBoxing {
+    /// Two consecutive calendar days (`month`/`day` and the next day), each
+    /// observed via `roll`, with the second bumped past the first's observed
+    /// date so they never collide. Models Christmas+Boxing (ForwardMonday),
+    /// South African Christmas+Goodwill (SundayToMonday), and NZ New Year pair.
+    ConsecutivePair {
+        month: u32,
+        day: u32,
+        roll: WeekendRoll,
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
@@ -83,14 +89,24 @@ fn bump_to_weekday(mut d: NaiveDate) -> NaiveDate {
     d
 }
 
-/// UK/Commonwealth Christmas + Boxing observed dates for `year`.
-pub fn christmas_boxing_observed(year: i32) -> Option<(NaiveDate, NaiveDate)> {
-    let xmas = bump_to_weekday(NaiveDate::from_ymd_opt(year, 12, 25)?);
-    let mut boxing = bump_to_weekday(NaiveDate::from_ymd_opt(year, 12, 26)?);
-    if boxing <= xmas {
-        boxing = bump_to_weekday(xmas + Duration::days(1));
+/// Observed dates for a consecutive-day pair (`month`/`day` and the next day),
+/// each rolled via `roll`, with the second bumped to the next weekday if it
+/// would collide with the first. A component left on a weekend by `roll` (e.g.
+/// SundayToMonday leaving a Saturday date) is harmless: weekend days are already
+/// non-trading.
+pub fn consecutive_pair_observed(
+    year: i32,
+    month: u32,
+    day: u32,
+    roll: WeekendRoll,
+) -> Option<(NaiveDate, NaiveDate)> {
+    let first_raw = NaiveDate::from_ymd_opt(year, month, day)?;
+    let first = apply_roll(first_raw, roll);
+    let mut second = apply_roll(first_raw + Duration::days(1), roll);
+    if second <= first {
+        second = bump_to_weekday(first + Duration::days(1));
     }
-    Some((xmas, boxing))
+    Some((first, second))
 }
 
 impl HolidayRule {
@@ -133,15 +149,18 @@ impl HolidayRule {
                 let easter = easter_sunday(year)?;
                 Some(easter + Duration::days(*offset_days as i64))
             }
-            // Multi-date rule; single-date accessor returns the first (Christmas).
-            HolidayRule::ChristmasBoxing {
+            // Multi-date rule; single-date accessor returns the first component.
+            HolidayRule::ConsecutivePair {
+                month,
+                day,
+                roll,
                 since_year,
                 until_year,
             } => {
                 if !in_window(year, *since_year, *until_year) {
                     return None;
                 }
-                christmas_boxing_observed(year).map(|(x, _)| x)
+                consecutive_pair_observed(year, *month, *day, *roll).map(|(a, _)| a)
             }
             HolidayRule::WeekdayOnOrBefore {
                 month,
@@ -176,15 +195,18 @@ impl HolidayRule {
                 .filter(|(y, _, _)| *y == year)
                 .filter_map(|(_, m, d)| NaiveDate::from_ymd_opt(year, *m, *d))
                 .collect(),
-            HolidayRule::ChristmasBoxing {
+            HolidayRule::ConsecutivePair {
+                month,
+                day,
+                roll,
                 since_year,
                 until_year,
             } => {
                 if !in_window(year, *since_year, *until_year) {
                     return Vec::new();
                 }
-                christmas_boxing_observed(year)
-                    .map(|(x, b)| vec![x, b])
+                consecutive_pair_observed(year, *month, *day, *roll)
+                    .map(|(a, b)| vec![a, b])
                     .unwrap_or_default()
             }
             _ => self.observed_in(year).into_iter().collect(),
@@ -202,6 +224,10 @@ fn apply_roll(d: NaiveDate, roll: WeekendRoll) -> NaiveDate {
         },
         WeekendRoll::ForwardMonday => match d.weekday() {
             ChronoWeekday::Sat => d + Duration::days(2),
+            ChronoWeekday::Sun => d + Duration::days(1),
+            _ => d,
+        },
+        WeekendRoll::SundayToMonday => match d.weekday() {
             ChronoWeekday::Sun => d + Duration::days(1),
             _ => d,
         },
@@ -333,14 +359,23 @@ mod tests {
 
     #[test]
     fn christmas_boxing_substitution() {
+        let cb = |y| consecutive_pair_observed(y, 12, 25, WeekendRoll::ForwardMonday).unwrap();
         // 2021: Dec 25 Sat → Mon 27, Dec 26 Sun → Tue 28 (bumped past Christmas).
-        let (x, b) = christmas_boxing_observed(2021).unwrap();
+        let (x, b) = cb(2021);
         assert_eq!(x, NaiveDate::from_ymd_opt(2021, 12, 27).unwrap());
         assert_eq!(b, NaiveDate::from_ymd_opt(2021, 12, 28).unwrap());
         // 2016: Dec 25 Sun → Mon 26, Dec 26 Mon collides → Tue 27.
-        let (x, b) = christmas_boxing_observed(2016).unwrap();
+        let (x, b) = cb(2016);
         assert_eq!(x, NaiveDate::from_ymd_opt(2016, 12, 26).unwrap());
         assert_eq!(b, NaiveDate::from_ymd_opt(2016, 12, 27).unwrap());
+    }
+
+    #[test]
+    fn sunday_only_pair_south_africa() {
+        // SA Christmas+Goodwill: 2021 Dec 25 Sat NOT substituted, Dec 26 Sun → Mon 27.
+        let (a, b) = consecutive_pair_observed(2021, 12, 25, WeekendRoll::SundayToMonday).unwrap();
+        assert_eq!(a, NaiveDate::from_ymd_opt(2021, 12, 25).unwrap()); // Saturday, non-trading
+        assert_eq!(b, NaiveDate::from_ymd_opt(2021, 12, 27).unwrap());
     }
 
     #[test]

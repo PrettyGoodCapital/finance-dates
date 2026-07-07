@@ -635,8 +635,27 @@ fn easter_between(offset_days: i32, since_year: Option<i32>, until_year: Option<
 
 /// Christmas Day + Boxing Day with UK/Commonwealth weekend substitution.
 fn christmas_boxing() -> HolidayRule {
-    HolidayRule::ChristmasBoxing {
+    consecutive_pair(12, 25, WeekendRoll::ForwardMonday)
+}
+
+/// A consecutive-day holiday pair observed via `roll` with collision bump.
+fn consecutive_pair(month: u32, day: u32, roll: WeekendRoll) -> HolidayRule {
+    HolidayRule::ConsecutivePair {
+        month,
+        day,
+        roll,
         since_year: None,
+        until_year: None,
+    }
+}
+
+/// Fixed date substituted to Monday only when it lands on a Sunday (South Africa).
+fn fixed_sun(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::SundayToMonday,
+        since_year,
         until_year: None,
     }
 }
@@ -1131,16 +1150,19 @@ fn tsx_trading_hours() -> TradingHours {
     )
 }
 
+/// One-off ASX closure: national day of mourning for Queen Elizabeth II.
+static ASX_ONE_OFFS: &[(i32, u32, u32)] = &[(2022, 9, 22)];
+
 fn asx_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        fixed(1, 26, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 25, None),
-        nth(6, Weekday::Mon, 2),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),      // New Year (substitute)
+        fixed_fwd(1, 26, None),     // Australia Day (substitute)
+        easter(-2),                 // Good Friday
+        easter(1),                  // Easter Monday
+        fixed_no_roll(4, 25, None), // ANZAC Day (no substitute)
+        nth(6, Weekday::Mon, 2),    // King's Birthday (2nd Mon Jun)
+        christmas_boxing(),         // Christmas + Boxing
+        HolidayRule::Tabulated { table: ASX_ONE_OFFS },
     ]
 }
 
@@ -1584,21 +1606,24 @@ fn xwbo_hours() -> TradingHours {
     )
 }
 
+/// One-off Euronext Dublin closure: Storm Emma.
+static XDUB_ONE_OFFS: &[(i32, u32, u32)] = &[(2018, 3, 2)];
+
 fn xdub_rules() -> Vec<HolidayRule> {
-    // Euronext Dublin: NY, Saint Patrick (Mar 17), Good Friday, Easter Mon,
-    // May Day (1st Mon), June Bank (1st Mon), August Bank (1st Mon),
-    // October Bank (last Mon), Christmas, Boxing.
+    // Dublin migrated from the Irish Stock Exchange calendar to Euronext during
+    // 2018-2021. Pre-migration it closed the Irish June bank holiday and the May
+    // bank holiday; from 2019 it added the Euronext Labour Day (May 1), and the
+    // Irish May bank holiday resumed from 2021. It never closes St Patrick's Day.
     vec![
-        fixed(1, 1, None),
-        fixed(3, 17, None),
-        easter(-2),
-        easter(1),
-        nth(5, Weekday::Mon, 1),
-        nth(6, Weekday::Mon, 1),
-        nth(8, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, -1),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),                          // New Year (substitute)
+        easter(-2),                                     // Good Friday
+        easter(1),                                      // Easter Monday
+        fixed_no_roll(5, 1, Some(2019)),                // Labour Day (Euronext) since 2019
+        nth_between(5, Weekday::Mon, 1, None, Some(2018)), // May bank holiday (pre-migration)
+        nth_between(5, Weekday::Mon, 1, Some(2021), None), // May bank holiday (resumed 2021)
+        nth_between(6, Weekday::Mon, 1, None, Some(2018)), // June bank holiday (pre-migration)
+        christmas_boxing(),                             // Christmas + Boxing
+        HolidayRule::Tabulated { table: XDUB_ONE_OFFS },
     ]
 }
 
@@ -1871,24 +1896,42 @@ fn xphs_hours() -> TradingHours {
     )
 }
 
+/// Matariki (NZ public holiday since 2022) — official government-announced
+/// dates; not derivable from a simple rule.
+static NZ_MATARIKI: &[(i32, u32, u32)] = &[
+    (2022, 6, 24),
+    (2023, 7, 14),
+    (2024, 6, 28),
+    (2025, 6, 20),
+    (2026, 7, 10),
+    (2027, 6, 25),
+    (2028, 7, 14),
+    (2029, 7, 6),
+    (2030, 6, 21),
+    (2031, 7, 11),
+    (2032, 7, 2),
+    (2033, 6, 24),
+    (2034, 7, 14),
+    (2035, 7, 6),
+];
+
 fn xnze_rules() -> Vec<HolidayRule> {
-    // NZX (New Zealand): NY (Jan 1, Jan 2 observed), Waitangi (Feb 6),
-    // Good Fri, Easter Mon, ANZAC (Apr 25), King's Birthday (1st Mon Jun),
-    // Matariki (variable, skipped here), Labour Day (4th Mon Oct),
-    // Christmas, Boxing Day.
     vec![
-        fixed(1, 1, None),
-        fixed(1, 2, None),
-        fixed(2, 6, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 25, None),
-        nth(6, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, 4),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        consecutive_pair(1, 1, WeekendRoll::ForwardMonday), // New Year + day after
+        fixed_fwd(2, 6, None),   // Waitangi Day (mondayised)
+        easter(-2),              // Good Friday
+        easter(1),               // Easter Monday
+        fixed_fwd(4, 25, None),  // ANZAC Day (mondayised)
+        nth(6, Weekday::Mon, 1), // King's Birthday (1st Mon Jun)
+        nth(10, Weekday::Mon, 4), // Labour Day (4th Mon Oct)
+        christmas_boxing(),      // Christmas + Boxing
+        HolidayRule::Tabulated { table: NZ_MATARIKI },
+        HolidayRule::Tabulated { table: NZ_ONE_OFFS },
     ]
 }
+
+/// One-off NZX closure: national day of mourning for Queen Elizabeth II.
+static NZ_ONE_OFFS: &[(i32, u32, u32)] = &[(2022, 9, 26)];
 
 fn xnze_hours() -> TradingHours {
     TradingHours::new(
@@ -1905,21 +1948,35 @@ fn xjse_rules() -> Vec<HolidayRule> {
     // Mon), Freedom (Apr 27), Workers (May 1), Youth (Jun 16), National
     // Women's (Aug 9), Heritage (Sep 24), Day of Reconciliation (Dec 16),
     // Christmas, Day of Goodwill (Dec 26).
+    // South African public holidays substitute only Sunday → Monday (Saturday
+    // holidays are lost). Christmas and Day of Goodwill are independent Sunday-
+    // rolled dates; there is no automatic cascade when a substitute collides
+    // with the next holiday (extra days require a special proclamation, tabulated
+    // below as one-offs).
     vec![
-        fixed(1, 1, None),
-        fixed(3, 21, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 27, None),
-        fixed(5, 1, None),
-        fixed(6, 16, None),
-        fixed(8, 9, None),
-        fixed(9, 24, None),
-        fixed(12, 16, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_sun(1, 1, None),   // New Year
+        fixed_sun(3, 21, None),  // Human Rights Day
+        easter(-2),              // Good Friday
+        easter(1),               // Family Day (Easter Monday)
+        fixed_sun(4, 27, None),  // Freedom Day
+        fixed_sun(5, 1, None),   // Workers' Day
+        fixed_sun(6, 16, None),  // Youth Day
+        fixed_sun(8, 9, None),   // National Women's Day
+        fixed_sun(9, 24, None),  // Heritage Day
+        fixed_sun(12, 16, None), // Day of Reconciliation
+        fixed_sun(12, 25, None), // Christmas
+        fixed_sun(12, 26, None), // Day of Goodwill
+        HolidayRule::Tabulated { table: XJSE_ONE_OFFS },
     ]
 }
+
+/// One-off JSE closures declared by special proclamation (elections; extra
+/// festive-season day when Christmas fell on a Sunday in 2016).
+static XJSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2016, 8, 3),   // Municipal elections
+    (2016, 12, 27), // Proclaimed festive-season public holiday
+    (2019, 5, 8),   // National elections
+];
 
 fn xjse_hours() -> TradingHours {
     TradingHours::new(
