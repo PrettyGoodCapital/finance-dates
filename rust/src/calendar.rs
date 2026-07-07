@@ -92,8 +92,23 @@ pub struct Calendar {
     /// Dates a rule would produce but that the venue did not actually observe
     /// (e.g. a bank holiday moved to a different day in a single year).
     pub exceptions: BTreeSet<NaiveDate>,
+    /// Post-processing applied to the computed holiday set (e.g. Japanese
+    /// substitute and citizens' holidays).
+    pub adjustment: HolidayAdjustment,
     cache: HolidayCache,
     early_cache: EarlyCloseCache,
+}
+
+/// Country-specific holiday post-processing applied after the base rules.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum HolidayAdjustment {
+    #[default]
+    None,
+    /// Japan: a national holiday on Sunday moves to the next non-holiday day
+    /// (substitute holiday), and a weekday between two holidays becomes a
+    /// holiday (citizens' holiday). The exchange-only year-end/new-year days
+    /// (Jan 2-3, Dec 31) are excluded from this computation.
+    Japanese,
 }
 
 /// An early-close rule. `rule` resolves to a date (using the same machinery
@@ -167,9 +182,17 @@ impl Calendar {
             schedules: Vec::new(),
             early_closes: Vec::new(),
             exceptions: BTreeSet::new(),
+            adjustment: HolidayAdjustment::None,
             cache: HolidayCache::default(),
             early_cache: EarlyCloseCache::default(),
         }
+    }
+
+    /// Builder: set country-specific holiday post-processing.
+    pub fn with_adjustment(mut self, adjustment: HolidayAdjustment) -> Self {
+        self.adjustment = adjustment;
+        self.cache = HolidayCache::default();
+        self
     }
 
     /// Builder: attach early-close rules.
@@ -275,6 +298,9 @@ impl Calendar {
                 }
                 d += Duration::days(1);
             }
+        }
+        if self.adjustment == HolidayAdjustment::Japanese {
+            apply_japanese_adjustment(&mut set);
         }
         let arc = Arc::new(set);
         self.cache.inner.write().insert(year, arc.clone());
@@ -699,6 +725,49 @@ fn weekday_on_or_before(month: u32, day: u32, weekday: Weekday, since_year: Opti
     }
 }
 
+/// Apply Japanese substitute and citizens' holidays to a computed holiday set.
+fn apply_japanese_adjustment(set: &mut BTreeSet<NaiveDate>) {
+    let is_exchange_only = |d: &NaiveDate| {
+        (d.month() == 1 && (d.day() == 2 || d.day() == 3)) || (d.month() == 12 && d.day() == 31)
+    };
+    // National holidays only (exclude the exchange-only year-end/new-year days).
+    let mut national: BTreeSet<NaiveDate> =
+        set.iter().filter(|d| !is_exchange_only(d)).cloned().collect();
+
+    // Substitute holiday: a national holiday on Sunday moves to the next day
+    // that is not already a national holiday.
+    let sundays: Vec<NaiveDate> = national
+        .iter()
+        .filter(|d| d.weekday() == Weekday::Sun)
+        .cloned()
+        .collect();
+    for d in sundays {
+        let mut e = d + Duration::days(1);
+        while national.contains(&e) {
+            e += Duration::days(1);
+        }
+        national.insert(e);
+    }
+
+    // Citizens' holiday: a single weekday sandwiched between two national holidays.
+    let extra: Vec<NaiveDate> = national
+        .iter()
+        .filter_map(|d| {
+            let mid = *d + Duration::days(1);
+            let next = *d + Duration::days(2);
+            if !national.contains(&mid) && national.contains(&next) && mid.weekday() != Weekday::Sun
+            {
+                Some(mid)
+            } else {
+                None
+            }
+        })
+        .collect();
+    national.extend(extra);
+
+    set.extend(national);
+}
+
 /// Colombian Emiliani-law holiday: observed the Monday on or after `month`/`day`.
 fn emiliani(month: u32, day: u32) -> HolidayRule {
     HolidayRule::WeekdayOnOrAfter {
@@ -973,25 +1042,67 @@ fn lse_trading_hours() -> TradingHours {
     )
 }
 
+/// Japanese vernal / autumnal equinox rule constructor.
+fn jp_equinox(spring: bool) -> HolidayRule {
+    HolidayRule::JapaneseEquinox {
+        spring,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// One-off JPX closures: 2019 imperial transition and the Tokyo 2020 Olympics
+/// holiday moves (Games held in 2021). Substitute/citizens' days are derived
+/// automatically by the Japanese adjustment.
+static TSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2019, 5, 1),   // Enthronement of Emperor Naruhito
+    (2019, 10, 22), // Enthronement ceremony
+    (2020, 7, 23),  // Marine Day (moved for Olympics)
+    (2020, 7, 24),  // Sports Day (moved)
+    (2020, 8, 10),  // Mountain Day (moved)
+    (2020, 10, 1),  // Full-day outage (Arrowhead system failure)
+    (2021, 7, 22),  // Marine Day (moved)
+    (2021, 7, 23),  // Sports Day (moved)
+    (2021, 8, 8),   // Mountain Day (moved)
+];
+
+/// Normal Happy-Monday dates suppressed in the Olympic years (moved above).
+static TSE_MOVED: &[(i32, u32, u32)] = &[
+    (2020, 7, 20),
+    (2020, 10, 12),
+    (2020, 8, 11),
+    (2021, 7, 19),
+    (2021, 10, 11),
+    (2021, 8, 11),
+];
+
 fn tse_rules() -> Vec<HolidayRule> {
     vec![
         fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 2, None),
         fixed_no_roll(1, 3, None),
-        nth(1, Weekday::Mon, 2),
-        fixed_no_roll(2, 11, None),
-        fixed_no_roll(2, 23, Some(2020)),
-        fixed_no_roll(4, 29, None),
-        fixed_no_roll(5, 3, None),
-        fixed_no_roll(5, 4, None),
-        fixed_no_roll(5, 5, None),
-        nth(7, Weekday::Mon, 3),
-        fixed_no_roll(8, 11, None),
-        nth(9, Weekday::Mon, 3),
-        nth(10, Weekday::Mon, 2),
-        fixed_no_roll(11, 3, None),
-        fixed_no_roll(11, 23, None),
-        fixed_no_roll(12, 31, None),
+        fixed_between(1, 15, None, Some(1999)), // Coming of Age (fixed pre-2000)
+        nth_between(1, Weekday::Mon, 2, Some(2000), None), // Coming of Age (2nd Mon)
+        fixed_no_roll(2, 11, None),             // National Foundation Day
+        fixed_between(12, 23, Some(1989), Some(2018)), // Emperor Akihito's birthday
+        fixed_no_roll(2, 23, Some(2020)),       // Emperor Naruhito's birthday
+        jp_equinox(true),                       // Vernal Equinox
+        fixed_no_roll(4, 29, None),             // Showa Day / Greenery Day
+        fixed_no_roll(5, 3, None),              // Constitution Memorial Day
+        fixed_no_roll(5, 4, Some(2007)),        // Greenery Day (citizens' day before 2007)
+        fixed_no_roll(5, 5, None),              // Children's Day
+        fixed_between(7, 20, Some(1996), Some(2002)), // Marine Day (fixed)
+        nth_between(7, Weekday::Mon, 3, Some(2003), None), // Marine Day (3rd Mon)
+        fixed_no_roll(8, 11, Some(2016)),       // Mountain Day (since 2016)
+        fixed_between(9, 15, None, Some(2002)), // Respect for the Aged (fixed)
+        nth_between(9, Weekday::Mon, 3, Some(2003), None), // Respect for the Aged (3rd Mon)
+        jp_equinox(false),                      // Autumnal Equinox
+        fixed_between(10, 10, None, Some(1999)), // Health-Sports Day (fixed)
+        nth_between(10, Weekday::Mon, 2, Some(2000), None), // Sports Day (2nd Mon)
+        fixed_no_roll(11, 3, None),             // Culture Day
+        fixed_no_roll(11, 23, None),            // Labour Thanksgiving Day
+        fixed_no_roll(12, 31, None),            // Exchange year-end
+        HolidayRule::Tabulated { table: TSE_ONE_OFFS },
     ]
 }
 
@@ -2769,7 +2880,9 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             tse_rules(),
             Some(tse_trading_hours()),
         )
-        .with_schedules(tse_schedules()),
+        .with_schedules(tse_schedules())
+        .with_exceptions(TSE_MOVED)
+        .with_adjustment(HolidayAdjustment::Japanese),
         Hkex => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -3321,6 +3434,22 @@ mod tests {
     fn lse_easter_monday_2024() {
         let cal = calendar_for_exchange("XLON").unwrap();
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()));
+    }
+
+    #[test]
+    fn jpx_equinox_substitute_and_citizens() {
+        let cal = calendar_for_exchange("XTKS").unwrap();
+        // Computed equinoxes.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 3, 20).unwrap())); // vernal
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 9, 22).unwrap())); // autumnal
+        // Citizens' holiday: 2015-09-22, between Respect-for-the-Aged (Mon 21)
+        // and the autumnal equinox (Wed 23).
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2015, 9, 22).unwrap()));
+        // Substitute holiday: Constitution Day 2020-05-03 (Sun) → Wed May 6.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 5, 6).unwrap()));
+        // Olympic move: Marine Day 2020 to Jul 23, not the normal 3rd Monday.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 7, 23).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2020, 7, 20).unwrap()));
     }
 
     #[test]

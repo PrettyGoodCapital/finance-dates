@@ -75,8 +75,24 @@ pub enum HolidayRule {
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
+    /// Japanese vernal (`spring = true`) or autumnal equinox day, computed from
+    /// the standard astronomical approximation (valid ~1980-2099).
+    JapaneseEquinox {
+        spring: bool,
+        since_year: Option<i32>,
+        until_year: Option<i32>,
+    },
     /// A static lookup table keyed by year (e.g. lunar holidays we don't compute).
     Tabulated { table: &'static [(i32, u32, u32)] },
+}
+
+/// Japanese vernal or autumnal equinox day (valid ~1980-2099).
+pub fn japanese_equinox(year: i32, spring: bool) -> Option<NaiveDate> {
+    let y = year as f64;
+    let (base, month) = if spring { (20.8431, 3) } else { (23.2488, 9) };
+    let leap = ((year - 1980) as f64 / 4.0).floor();
+    let day = (base + 0.242194 * (y - 1980.0) - leap).floor() as u32;
+    NaiveDate::from_ymd_opt(year, month, day)
 }
 
 fn in_window(year: i32, since_year: Option<i32>, until_year: Option<i32>) -> bool {
@@ -205,6 +221,16 @@ impl HolidayRule {
                     - anchor.weekday().num_days_from_monday() as i64)
                     .rem_euclid(7);
                 Some(anchor + Duration::days(fwd))
+            }
+            HolidayRule::JapaneseEquinox {
+                spring,
+                since_year,
+                until_year,
+            } => {
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
+                }
+                japanese_equinox(year, *spring)
             }
             HolidayRule::Tabulated { table } => table
                 .iter()
