@@ -66,6 +66,15 @@ pub enum HolidayRule {
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
+    /// Earliest `weekday` on or after `month`/`day` (e.g. Colombian Emiliani-law
+    /// holidays that move to the following Monday).
+    WeekdayOnOrAfter {
+        month: u32,
+        day: u32,
+        weekday: Weekday,
+        since_year: Option<i32>,
+        until_year: Option<i32>,
+    },
     /// A static lookup table keyed by year (e.g. lunar holidays we don't compute).
     Tabulated { table: &'static [(i32, u32, u32)] },
 }
@@ -180,6 +189,22 @@ impl HolidayRule {
                     - weekday.num_days_from_monday() as i64)
                     .rem_euclid(7);
                 Some(anchor - Duration::days(back))
+            }
+            HolidayRule::WeekdayOnOrAfter {
+                month,
+                day,
+                weekday,
+                since_year,
+                until_year,
+            } => {
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
+                }
+                let anchor = NaiveDate::from_ymd_opt(year, *month, *day)?;
+                let fwd = (weekday.num_days_from_monday() as i64
+                    - anchor.weekday().num_days_from_monday() as i64)
+                    .rem_euclid(7);
+                Some(anchor + Duration::days(fwd))
             }
             HolidayRule::Tabulated { table } => table
                 .iter()

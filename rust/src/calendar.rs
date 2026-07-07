@@ -593,6 +593,18 @@ fn fixed_between(
     }
 }
 
+/// Fixed date rolled back to the preceding Friday when it lands on a weekend
+/// (year-end closure convention at SIX, B3, BVC).
+fn fixed_prev_fri(month: u32, day: u32) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::PrecedingFriday,
+        since_year: None,
+        until_year: None,
+    }
+}
+
 /// Fixed date rolled forward to Monday when it lands on a weekend (UK/
 /// Commonwealth substitution).
 fn fixed_fwd(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
@@ -683,6 +695,17 @@ fn weekday_on_or_before(month: u32, day: u32, weekday: Weekday, since_year: Opti
         day,
         weekday,
         since_year,
+        until_year: None,
+    }
+}
+
+/// Colombian Emiliani-law holiday: observed the Monday on or after `month`/`day`.
+fn emiliani(month: u32, day: u32) -> HolidayRule {
+    HolidayRule::WeekdayOnOrAfter {
+        month,
+        day,
+        weekday: Weekday::Mon,
+        since_year: None,
         until_year: None,
     }
 }
@@ -1370,14 +1393,7 @@ fn xswx_rules() -> Vec<HolidayRule> {
         fixed_no_roll(12, 24, None),
         fixed_no_roll(12, 25, None),
         fixed_no_roll(12, 26, None),
-        // New Year's Eve moves to the preceding Friday when Dec 31 is a weekend.
-        HolidayRule::Fixed {
-            month: 12,
-            day: 31,
-            roll: WeekendRoll::PrecedingFriday,
-            since_year: None,
-            until_year: None,
-        },
+        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -2294,22 +2310,28 @@ fn bvmf_rules() -> Vec<HolidayRule> {
     // Good Friday, Tiradentes (Apr 21), Labour, Corpus Christi (+60),
     // Independence (Sep 7), Our Lady of Aparecida (Oct 12), All Souls (Nov 2),
     // Republic (Nov 15), Black Awareness (Nov 20), Christmas Eve, Christmas, NYE.
+    // B3 stopped observing São Paulo state/city holidays after 2021; Black
+    // Awareness Day became a national holiday in 2024. In 2020 the exchange did
+    // not close for the São Paulo holidays (see exceptions at construction).
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
+        fixed_between(1, 25, None, Some(2021)), // São Paulo city anniversary
         easter(-48),
         easter(-47),
         easter(-2),
-        fixed(4, 21, None),
-        fixed(5, 1, None),
+        fixed_no_roll(4, 21, None),
+        fixed_no_roll(5, 1, None),
         easter(60),
-        fixed(9, 7, None),
-        fixed(10, 12, None),
-        fixed(11, 2, None),
-        fixed(11, 15, None),
-        fixed(11, 20, Some(2024)),
+        fixed_between(7, 9, None, Some(2021)), // São Paulo Constitutionalist Revolution
+        fixed_no_roll(9, 7, None),
+        fixed_no_roll(10, 12, None),
+        fixed_no_roll(11, 2, None),
+        fixed_no_roll(11, 15, None),
+        fixed_between(11, 20, None, Some(2021)), // Black Awareness (São Paulo era)
+        fixed_no_roll(11, 20, Some(2024)),       // Black Awareness (national since 2024)
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed_no_roll(12, 31, None),
+        fixed_no_roll(12, 25, None),
+        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -2324,17 +2346,19 @@ fn bvmf_hours() -> TradingHours {
 fn xmex_rules() -> Vec<HolidayRule> {
     // BMV Mexico: NY, Constitution (1st Mon Feb), Benito Juárez (3rd Mon Mar),
     // Maundy Thu, Good Fri, Labour, Independence (Sep 16), Revolution
-    // (3rd Mon Nov), Christmas.
+    // (3rd Mon Nov), Banxico holiday (Dec 12), Christmas.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         nth(2, Weekday::Mon, 1),
         nth(3, Weekday::Mon, 3),
         easter(-3),
         easter(-2),
-        fixed(5, 1, None),
-        fixed(9, 16, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(9, 16, None),
+        fixed_no_roll(11, 2, None), // All Souls' Day
         nth(11, Weekday::Mon, 3),
-        fixed(12, 25, None),
+        fixed_no_roll(12, 12, None),
+        fixed_no_roll(12, 25, None),
     ]
 }
 
@@ -2439,29 +2463,30 @@ fn xlim_hours() -> TradingHours {
 }
 
 fn xbog_rules() -> Vec<HolidayRule> {
-    // Bogotá Stock Exchange (BVC): NY, Epiphany, Saint Joseph, Maundy Thu,
-    // Good Fri, Labour, Ascension, Corpus Christi, Sacred Heart, Saint
-    // Peter & Paul, Independence (Jul 20), Battle of Boyacá (Aug 7),
-    // Assumption, Race Day (Oct 12), All Saints, Independence of Cartagena
-    // (Nov 11), Immaculate, Christmas.
+    // Bogotá (BVC). Many holidays follow the Emiliani law (observed the next
+    // Monday). The Easter-based movable feasts are pre-shifted to their observed
+    // Monday: Ascension = Easter+43, Corpus Christi = Easter+64, Sacred Heart =
+    // Easter+71.
     vec![
-        fixed(1, 1, None),
-        fixed(1, 6, None),
-        fixed(3, 19, None),
-        easter(-3),
-        easter(-2),
-        fixed(5, 1, None),
-        easter(39),
-        easter(60),
-        easter(68),
-        fixed(7, 20, None),
-        fixed(8, 7, None),
-        fixed(8, 15, None),
-        fixed(10, 12, None),
-        fixed(11, 1, None),
-        fixed(11, 11, None),
-        fixed(12, 8, None),
-        fixed(12, 25, None),
+        fixed_no_roll(1, 1, None),
+        emiliani(1, 6),  // Epiphany
+        emiliani(3, 19), // Saint Joseph
+        easter(-3),      // Maundy Thursday
+        easter(-2),      // Good Friday
+        fixed_no_roll(5, 1, None), // Labour Day
+        easter(43),      // Ascension (observed Monday)
+        easter(64),      // Corpus Christi (observed Monday)
+        easter(71),      // Sacred Heart (observed Monday)
+        emiliani(6, 29), // Saint Peter & Paul
+        fixed_no_roll(7, 20, None), // Independence
+        fixed_no_roll(8, 7, None),  // Battle of Boyacá
+        emiliani(8, 15), // Assumption
+        emiliani(10, 12), // Race Day
+        emiliani(11, 1),  // All Saints
+        emiliani(11, 11), // Independence of Cartagena
+        fixed_no_roll(12, 8, None),  // Immaculate Conception
+        fixed_no_roll(12, 25, None), // Christmas
+        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -3003,7 +3028,9 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             bvmf_rules(),
             Some(bvmf_hours()),
-        ),
+        )
+        // In 2020 B3 traded on the São Paulo state/city holidays.
+        .with_exceptions(&[(2020, 7, 9), (2020, 11, 20)]),
         Xmex => Calendar::with_type(
             name,
             market_type("Equities"),
