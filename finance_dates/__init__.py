@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover - sphinx fallback
         raise ImportError("finance_dates native extension is not available")
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 try:  # optional runtime dependency for expression namespace registration
     from . import _namespace as _namespace  # noqa: F401
