@@ -1306,22 +1306,19 @@ fn xlis_rules() -> Vec<HolidayRule> {
 }
 
 fn xmil_rules() -> Vec<HolidayRule> {
-    // Borsa Italiana (Milan): NY, Epiphany (Jan 6), Easter Mon, Liberation
-    // Day (Apr 25), Labour, Republic Day (Jun 2), Assumption (Aug 15),
-    // All Saints (Nov 1), Immaculate Conception (Dec 8), Christmas, Boxing.
+    // Euronext Milan trades the harmonized Euronext holidays plus Assumption
+    // (Aug 15) and the festive block Dec 24-26 + 31. It does not close for the
+    // other Italian national holidays.
     vec![
-        fixed(1, 1, None),
-        fixed_no_roll(1, 6, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed_no_roll(4, 25, None),
-        fixed(5, 1, None),
-        fixed_no_roll(6, 2, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(8, 15, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 8, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1334,24 +1331,21 @@ fn xmil_hours() -> TradingHours {
 }
 
 fn xmad_rules() -> Vec<HolidayRule> {
-    // BME Madrid: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Assumption, National Day (Oct 12), All Saints, Constitution (Dec 6),
-    // Immaculate (Dec 8), Christmas, Boxing.
+    // BME Madrid closes NY, Good Friday, Easter Monday, Labour Day, Christmas
+    // and Boxing Day only; it trades through the other Spanish national holidays.
     vec![
-        fixed(1, 1, None),
-        fixed_no_roll(1, 6, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed_no_roll(8, 15, None),
-        fixed_no_roll(10, 12, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 6, None),
-        fixed_no_roll(12, 8, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        HolidayRule::Tabulated { table: XMAD_ONE_OFFS },
     ]
 }
+
+/// One-off BME Madrid closures (festive-season closures in 2021).
+static XMAD_ONE_OFFS: &[(i32, u32, u32)] = &[(2021, 12, 24), (2021, 12, 31)];
 
 fn xmad_hours() -> TradingHours {
     TradingHours::new(
@@ -1538,23 +1532,31 @@ fn xice_hours() -> TradingHours {
 }
 
 fn xwar_rules() -> Vec<HolidayRule> {
-    // Warsaw: NY, Epiphany, Easter Mon, Labour, Constitution (May 3),
-    // Corpus Christi (+60), Assumption, All Saints, Independence (Nov 11),
-    // Christmas, Boxing.
+    // Warsaw (GPW): NY, Epiphany, Good Friday, Easter Mon, Labour, Constitution
+    // (May 3), Corpus Christi (+60), Assumption, All Saints, Independence
+    // (Nov 11), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
+        easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 3, None),
         easter(60),
         fixed_no_roll(8, 15, None),
         fixed_no_roll(11, 1, None),
         fixed_no_roll(11, 11, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated { table: XWAR_ONE_OFFS },
     ]
 }
+
+/// One-off GPW Warsaw closures: an exchange holiday in Jan 2018 and the
+/// centenary of Polish independence (Nov 12, 2018).
+static XWAR_ONE_OFFS: &[(i32, u32, u32)] = &[(2018, 1, 2), (2018, 11, 12)];
 
 fn xwar_hours() -> TradingHours {
     TradingHours::new(
@@ -1565,14 +1567,15 @@ fn xwar_hours() -> TradingHours {
 }
 
 fn xpra_rules() -> Vec<HolidayRule> {
-    // Prague: NY, Good Friday, Easter Mon, Labour, Liberation (May 8),
-    // Ss Cyril & Methodius (Jul 5), Jan Hus (Jul 6), Statehood (Sep 28),
-    // Independence (Oct 28), Freedom (Nov 17), Christmas Eve, Christmas, Boxing.
+    // Prague (PSE): NY, Good Friday (public holiday since 2016), Easter Mon,
+    // Labour, Liberation (May 8), Ss Cyril & Methodius (Jul 5), Jan Hus (Jul 6),
+    // Statehood (Sep 28), Independence (Oct 28), Freedom (Nov 17), festive block
+    // Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
-        easter(-2),
+        fixed_no_roll(1, 1, None),
+        easter(-2), // Good Friday (PSE closed even before it became a public holiday)
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 8, None),
         fixed_no_roll(7, 5, None),
         fixed_no_roll(7, 6, None),
@@ -1580,8 +1583,9 @@ fn xpra_rules() -> Vec<HolidayRule> {
         fixed_no_roll(10, 28, None),
         fixed_no_roll(11, 17, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1594,23 +1598,58 @@ fn xpra_hours() -> TradingHours {
 }
 
 fn xbud_rules() -> Vec<HolidayRule> {
-    // Budapest: NY, 1848 Revolution (Mar 15), Good Friday, Easter Mon,
+    // Budapest (BSE): NY, 1848 Revolution (Mar 15), Good Friday, Easter Mon,
     // Labour, Whit Mon, State Foundation (Aug 20), 1956 Revolution (Oct 23),
-    // All Saints, Christmas, Boxing.
+    // All Saints, festive block Dec 24-26 + 31. Hungary also observes irregular
+    // "bridge days" that swap a working day for a long weekend; these are
+    // announced annually and tabulated below.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(3, 15, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(50),
         fixed_no_roll(8, 20, None),
         fixed_no_roll(10, 23, None),
         fixed_no_roll(11, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated { table: XBUD_BRIDGE_DAYS },
     ]
 }
+
+/// Hungarian "bridge days" (munkaszüneti nap around a public holiday) — annually
+/// announced, not derivable from a rule. Filled from the exchange calendar.
+static XBUD_BRIDGE_DAYS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 8, 21),
+    (2016, 3, 14),
+    (2016, 10, 31),
+    (2018, 3, 16),
+    (2018, 4, 30),
+    (2018, 10, 22),
+    (2018, 11, 2),
+    (2019, 8, 19),
+    (2019, 12, 27),
+    (2020, 8, 21),
+    (2022, 3, 14),
+    (2022, 10, 31),
+    (2024, 8, 19),
+    (2024, 12, 27),
+    (2025, 5, 2),
+    (2025, 10, 24),
+    (2026, 1, 2),
+    (2026, 8, 21),
+    (2029, 3, 16),
+    (2029, 4, 30),
+    (2029, 10, 22),
+    (2029, 11, 2),
+    (2030, 8, 19),
+    (2030, 12, 27),
+];
 
 fn xbud_hours() -> TradingHours {
     TradingHours::new(
