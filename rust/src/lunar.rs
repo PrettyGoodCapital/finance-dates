@@ -54,14 +54,12 @@ fn new_moon_jde(k: f64) -> f64 {
     let t2 = t * t;
     let t3 = t2 * t;
     let t4 = t3 * t;
-    let mut jde = 2451550.09766 + SYNODIC_MONTH * k + 0.00015437 * t2 - 0.000000150 * t3
-        + 0.00000000073 * t4;
+    let mut jde =
+        2451550.09766 + SYNODIC_MONTH * k + 0.00015437 * t2 - 0.000000150 * t3 + 0.00000000073 * t4;
     let e = 1.0 - 0.002516 * t - 0.0000074 * t2;
     let m = rad(2.5534 + 29.1053567 * k - 0.0000014 * t2 - 0.00000011 * t3);
-    let mp = rad(201.5643 + 385.81693528 * k + 0.0107582 * t2 + 0.00001238 * t3
-        - 0.000000058 * t4);
-    let f = rad(160.7108 + 390.67050284 * k - 0.0016118 * t2 - 0.00000227 * t3
-        + 0.000000011 * t4);
+    let mp = rad(201.5643 + 385.81693528 * k + 0.0107582 * t2 + 0.00001238 * t3 - 0.000000058 * t4);
+    let f = rad(160.7108 + 390.67050284 * k - 0.0016118 * t2 - 0.00000227 * t3 + 0.000000011 * t4);
     let omega = rad(124.7746 - 1.56375588 * k + 0.0020672 * t2 + 0.00000215 * t3);
     let corr = -0.40720 * mp.sin()
         + 0.17241 * e * m.sin()
@@ -202,8 +200,7 @@ fn chinese_months(year: i32, off: f64) -> Vec<LunarMonth> {
     for i in a..b {
         let start = starts[i];
         let next = starts[i + 1];
-        let is_leap =
-            has_leap && !leap_assigned && i > a && !contains_zhongqi(start, next, off);
+        let is_leap = has_leap && !leap_assigned && i > a && !contains_zhongqi(start, next, off);
         if is_leap {
             leap_assigned = true;
             // A leap month repeats the preceding month's number.
@@ -253,7 +250,9 @@ pub fn lunar_to_gregorian(
     off: f64,
 ) -> Option<NaiveDate> {
     let months = chinese_months(year, off);
-    let m = months.iter().find(|m| m.number == month && m.leap == leap)?;
+    let m = months
+        .iter()
+        .find(|m| m.number == month && m.leap == leap)?;
     Some(m.start + chrono::Duration::days(day as i64 - 1))
 }
 
@@ -295,9 +294,18 @@ mod tests {
 
     #[test]
     fn known_qingming() {
-        assert_eq!(qingming(2024, CST), NaiveDate::from_ymd_opt(2024, 4, 4).unwrap());
-        assert_eq!(qingming(2025, CST), NaiveDate::from_ymd_opt(2025, 4, 4).unwrap());
-        assert_eq!(qingming(2023, CST), NaiveDate::from_ymd_opt(2023, 4, 5).unwrap());
+        assert_eq!(
+            qingming(2024, CST),
+            NaiveDate::from_ymd_opt(2024, 4, 4).unwrap()
+        );
+        assert_eq!(
+            qingming(2025, CST),
+            NaiveDate::from_ymd_opt(2025, 4, 4).unwrap()
+        );
+        assert_eq!(
+            qingming(2023, CST),
+            NaiveDate::from_ymd_opt(2023, 4, 5).unwrap()
+        );
     }
 
     #[test]
