@@ -4,13 +4,15 @@ use chrono::{Datelike, Duration, NaiveDate, Weekday as ChronoWeekday};
 
 pub use chrono::Weekday;
 
-/// Saturday→Friday, Sunday→Monday observance roll, US-style.
+/// Weekend observance roll.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WeekendRoll {
     /// No adjustment.
     None,
     /// Sat → Fri, Sun → Mon (US/Western convention).
     NearestWeekday,
+    /// Sat → Mon, Sun → Mon (UK/Commonwealth bank-holiday substitution).
+    ForwardMonday,
 }
 
 /// A holiday whose date depends only on the calendar year.
@@ -22,6 +24,7 @@ pub enum HolidayRule {
         day: u32,
         roll: WeekendRoll,
         since_year: Option<i32>,
+        until_year: Option<i32>,
     },
     /// Nth weekday of a month (e.g. 3rd Monday in January = MLK Day).
     /// `n` is 1-based; negative `n` counts from the end (-1 = last).
@@ -30,14 +33,64 @@ pub enum HolidayRule {
         weekday: Weekday,
         n: i32,
         since_year: Option<i32>,
+        until_year: Option<i32>,
     },
     /// Easter Sunday plus offset days (e.g. Good Friday = -2, Easter Monday = +1).
     EasterOffset {
         offset_days: i32,
         since_year: Option<i32>,
+        until_year: Option<i32>,
+    },
+    /// Christmas Day + Boxing Day with UK/Commonwealth substitution: each rolls
+    /// forward to the next weekday, and Boxing Day is bumped past Christmas Day's
+    /// observed date so the two never collide.
+    ChristmasBoxing {
+        since_year: Option<i32>,
+        until_year: Option<i32>,
+    },
+    /// Latest `weekday` on or before `month`/`day` (e.g. Canadian Victoria Day =
+    /// the Monday on or before May 24).
+    WeekdayOnOrBefore {
+        month: u32,
+        day: u32,
+        weekday: Weekday,
+        since_year: Option<i32>,
+        until_year: Option<i32>,
     },
     /// A static lookup table keyed by year (e.g. lunar holidays we don't compute).
     Tabulated { table: &'static [(i32, u32, u32)] },
+}
+
+fn in_window(year: i32, since_year: Option<i32>, until_year: Option<i32>) -> bool {
+    if let Some(s) = since_year {
+        if year < s {
+            return false;
+        }
+    }
+    if let Some(u) = until_year {
+        if year > u {
+            return false;
+        }
+    }
+    true
+}
+
+/// Roll a date forward to the next weekday (Sat/Sun → Mon).
+fn bump_to_weekday(mut d: NaiveDate) -> NaiveDate {
+    while matches!(d.weekday(), ChronoWeekday::Sat | ChronoWeekday::Sun) {
+        d += Duration::days(1);
+    }
+    d
+}
+
+/// UK/Commonwealth Christmas + Boxing observed dates for `year`.
+pub fn christmas_boxing_observed(year: i32) -> Option<(NaiveDate, NaiveDate)> {
+    let xmas = bump_to_weekday(NaiveDate::from_ymd_opt(year, 12, 25)?);
+    let mut boxing = bump_to_weekday(NaiveDate::from_ymd_opt(year, 12, 26)?);
+    if boxing <= xmas {
+        boxing = bump_to_weekday(xmas + Duration::days(1));
+    }
+    Some((xmas, boxing))
 }
 
 impl HolidayRule {
@@ -49,11 +102,10 @@ impl HolidayRule {
                 day,
                 roll,
                 since_year,
+                until_year,
             } => {
-                if let Some(y) = since_year {
-                    if year < *y {
-                        return None;
-                    }
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
                 }
                 let raw = NaiveDate::from_ymd_opt(year, *month, *day)?;
                 Some(apply_roll(raw, *roll))
@@ -63,25 +115,49 @@ impl HolidayRule {
                 weekday,
                 n,
                 since_year,
+                until_year,
             } => {
-                if let Some(y) = since_year {
-                    if year < *y {
-                        return None;
-                    }
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
                 }
                 nth_weekday_of_month(year, *month, *weekday, *n)
             }
             HolidayRule::EasterOffset {
                 offset_days,
                 since_year,
+                until_year,
             } => {
-                if let Some(y) = since_year {
-                    if year < *y {
-                        return None;
-                    }
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
                 }
                 let easter = easter_sunday(year)?;
                 Some(easter + Duration::days(*offset_days as i64))
+            }
+            // Multi-date rule; single-date accessor returns the first (Christmas).
+            HolidayRule::ChristmasBoxing {
+                since_year,
+                until_year,
+            } => {
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
+                }
+                christmas_boxing_observed(year).map(|(x, _)| x)
+            }
+            HolidayRule::WeekdayOnOrBefore {
+                month,
+                day,
+                weekday,
+                since_year,
+                until_year,
+            } => {
+                if !in_window(year, *since_year, *until_year) {
+                    return None;
+                }
+                let anchor = NaiveDate::from_ymd_opt(year, *month, *day)?;
+                let back = (anchor.weekday().num_days_from_monday() as i64
+                    - weekday.num_days_from_monday() as i64)
+                    .rem_euclid(7);
+                Some(anchor - Duration::days(back))
             }
             HolidayRule::Tabulated { table } => table
                 .iter()
@@ -100,6 +176,17 @@ impl HolidayRule {
                 .filter(|(y, _, _)| *y == year)
                 .filter_map(|(_, m, d)| NaiveDate::from_ymd_opt(year, *m, *d))
                 .collect(),
+            HolidayRule::ChristmasBoxing {
+                since_year,
+                until_year,
+            } => {
+                if !in_window(year, *since_year, *until_year) {
+                    return Vec::new();
+                }
+                christmas_boxing_observed(year)
+                    .map(|(x, b)| vec![x, b])
+                    .unwrap_or_default()
+            }
             _ => self.observed_in(year).into_iter().collect(),
         }
     }
@@ -110,6 +197,11 @@ fn apply_roll(d: NaiveDate, roll: WeekendRoll) -> NaiveDate {
         WeekendRoll::None => d,
         WeekendRoll::NearestWeekday => match d.weekday() {
             ChronoWeekday::Sat => d - Duration::days(1),
+            ChronoWeekday::Sun => d + Duration::days(1),
+            _ => d,
+        },
+        WeekendRoll::ForwardMonday => match d.weekday() {
+            ChronoWeekday::Sat => d + Duration::days(2),
             ChronoWeekday::Sun => d + Duration::days(1),
             _ => d,
         },
@@ -218,6 +310,7 @@ mod tests {
             day: 25,
             roll: WeekendRoll::NearestWeekday,
             since_year: None,
+            until_year: None,
         };
         assert_eq!(
             r.observed_in(2022).unwrap(),
@@ -232,8 +325,37 @@ mod tests {
             day: 19,
             roll: WeekendRoll::NearestWeekday,
             since_year: Some(2021),
+            until_year: None,
         };
         assert!(r.observed_in(2020).is_none());
         assert!(r.observed_in(2021).is_some());
+    }
+
+    #[test]
+    fn christmas_boxing_substitution() {
+        // 2021: Dec 25 Sat → Mon 27, Dec 26 Sun → Tue 28 (bumped past Christmas).
+        let (x, b) = christmas_boxing_observed(2021).unwrap();
+        assert_eq!(x, NaiveDate::from_ymd_opt(2021, 12, 27).unwrap());
+        assert_eq!(b, NaiveDate::from_ymd_opt(2021, 12, 28).unwrap());
+        // 2016: Dec 25 Sun → Mon 26, Dec 26 Mon collides → Tue 27.
+        let (x, b) = christmas_boxing_observed(2016).unwrap();
+        assert_eq!(x, NaiveDate::from_ymd_opt(2016, 12, 26).unwrap());
+        assert_eq!(b, NaiveDate::from_ymd_opt(2016, 12, 27).unwrap());
+    }
+
+    #[test]
+    fn forward_monday_roll() {
+        let r = HolidayRule::Fixed {
+            month: 1,
+            day: 1,
+            roll: WeekendRoll::ForwardMonday,
+            since_year: None,
+            until_year: None,
+        };
+        // 2022-01-01 Sat → Mon Jan 3.
+        assert_eq!(
+            r.observed_in(2022).unwrap(),
+            NaiveDate::from_ymd_opt(2022, 1, 3).unwrap()
+        );
     }
 }

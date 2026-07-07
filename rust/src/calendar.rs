@@ -89,6 +89,9 @@ pub struct Calendar {
     /// at most one date per year, paired with a local close time that
     /// replaces the normal session close on that date.
     pub early_closes: Vec<EarlyCloseRule>,
+    /// Dates a rule would produce but that the venue did not actually observe
+    /// (e.g. a bank holiday moved to a different day in a single year).
+    pub exceptions: BTreeSet<NaiveDate>,
     cache: HolidayCache,
     early_cache: EarlyCloseCache,
 }
@@ -163,6 +166,7 @@ impl Calendar {
             trading_hours,
             schedules: Vec::new(),
             early_closes: Vec::new(),
+            exceptions: BTreeSet::new(),
             cache: HolidayCache::default(),
             early_cache: EarlyCloseCache::default(),
         }
@@ -171,6 +175,17 @@ impl Calendar {
     /// Builder: attach early-close rules.
     pub fn with_early_closes(mut self, ec: Vec<EarlyCloseRule>) -> Self {
         self.early_closes = ec;
+        self
+    }
+
+    /// Builder: mark `(year, month, day)` dates that rules would produce but the
+    /// venue did not actually close on (holiday moved to another day that year).
+    pub fn with_exceptions(mut self, dates: &[(i32, u32, u32)]) -> Self {
+        self.exceptions = dates
+            .iter()
+            .filter_map(|(y, m, d)| NaiveDate::from_ymd_opt(*y, *m, *d))
+            .collect();
+        self.cache = HolidayCache::default();
         self
     }
 
@@ -207,6 +222,9 @@ impl Calendar {
     }
 
     fn is_holiday_uncached(&self, date: NaiveDate) -> bool {
+        if self.exceptions.contains(&date) {
+            return false;
+        }
         let schedule = self.schedule_for(date);
         schedule
             .rules
@@ -545,6 +563,7 @@ fn fixed(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
         day,
         roll: WeekendRoll::NearestWeekday,
         since_year,
+        until_year: None,
     }
 }
 
@@ -554,6 +573,19 @@ fn fixed_no_roll(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
         day,
         roll: WeekendRoll::None,
         since_year,
+        until_year: None,
+    }
+}
+
+/// Fixed date rolled forward to Monday when it lands on a weekend (UK/
+/// Commonwealth substitution).
+fn fixed_fwd(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::ForwardMonday,
+        since_year,
+        until_year: None,
     }
 }
 
@@ -563,6 +595,24 @@ fn nth(month: u32, weekday: Weekday, n: i32) -> HolidayRule {
         weekday,
         n,
         since_year: None,
+        until_year: None,
+    }
+}
+
+/// Nth weekday restricted to `[since, until]` inclusive year bounds.
+fn nth_between(
+    month: u32,
+    weekday: Weekday,
+    n: i32,
+    since_year: Option<i32>,
+    until_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::NthWeekday {
+        month,
+        weekday,
+        n,
+        since_year,
+        until_year,
     }
 }
 
@@ -570,10 +620,55 @@ fn easter(offset_days: i32) -> HolidayRule {
     HolidayRule::EasterOffset {
         offset_days,
         since_year: None,
+        until_year: None,
+    }
+}
+
+/// Easter offset restricted to `[since, until]` inclusive year bounds.
+fn easter_between(offset_days: i32, since_year: Option<i32>, until_year: Option<i32>) -> HolidayRule {
+    HolidayRule::EasterOffset {
+        offset_days,
+        since_year,
+        until_year,
+    }
+}
+
+/// Christmas Day + Boxing Day with UK/Commonwealth weekend substitution.
+fn christmas_boxing() -> HolidayRule {
+    HolidayRule::ChristmasBoxing {
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Latest `weekday` on or before `month`/`day` (e.g. Victoria Day).
+fn weekday_on_or_before(month: u32, day: u32, weekday: Weekday, since_year: Option<i32>) -> HolidayRule {
+    HolidayRule::WeekdayOnOrBefore {
+        month,
+        day,
+        weekday,
+        since_year,
+        until_year: None,
     }
 }
 
 // Built-in calendars
+
+/// Ad-hoc, unscheduled full-day US equity/derivative closures (national days
+/// of mourning, 9/11, Hurricane Sandy). These do not follow any recurring rule
+/// and must be tabulated explicitly. Shared by NYSE/NASDAQ and CFE (Cboe).
+static US_SPECIAL_CLOSURES: &[(i32, u32, u32)] = &[
+    (2001, 9, 11), // September 11 attacks
+    (2001, 9, 12),
+    (2001, 9, 13),
+    (2001, 9, 14),
+    (2004, 6, 11),  // President Reagan, day of mourning
+    (2007, 1, 2),   // President Ford, day of mourning
+    (2012, 10, 29), // Hurricane Sandy
+    (2012, 10, 30),
+    (2018, 12, 5), // President G.H.W. Bush, day of mourning
+    (2025, 1, 9),  // President Carter, day of mourning
+];
 
 fn nyse_rules() -> Vec<HolidayRule> {
     vec![
@@ -582,11 +677,14 @@ fn nyse_rules() -> Vec<HolidayRule> {
         nth(2, Weekday::Mon, 3),
         easter(-2),
         nth(5, Weekday::Mon, -1),
-        fixed(6, 19, Some(2021)),
+        fixed(6, 19, Some(2022)),
         fixed(7, 4, None),
         nth(9, Weekday::Mon, 1),
         nth(11, Weekday::Thu, 4),
         fixed(12, 25, None),
+        HolidayRule::Tabulated {
+            table: US_SPECIAL_CLOSURES,
+        },
     ]
 }
 
@@ -713,6 +811,9 @@ fn cfe_rules() -> Vec<HolidayRule> {
         nth(9, Weekday::Mon, 1),
         nth(11, Weekday::Thu, 4),
         fixed(12, 25, None),
+        HolidayRule::Tabulated {
+            table: US_SPECIAL_CLOSURES,
+        },
     ]
 }
 
@@ -776,16 +877,33 @@ fn crypto_rules() -> Vec<HolidayRule> {
     vec![]
 }
 
+/// One-off LSE closures and moved bank holidays (our own record of UK events;
+/// pmc is used only to cross-check).
+static LSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2020, 5, 8),  // VE Day 75th anniversary (early May BH moved from May 4)
+    (2022, 6, 2),  // Spring bank holiday moved here for the Platinum Jubilee
+    (2022, 6, 3),  // Platinum Jubilee extra bank holiday
+    (2022, 9, 19), // State funeral of Queen Elizabeth II
+    (2023, 5, 8),  // Coronation of King Charles III
+];
+
+/// Dates the recurring bank-holiday rules produce but that were moved elsewhere
+/// in that year (so the exchange actually traded on them).
+static LSE_MOVED: &[(i32, u32, u32)] = &[
+    (2020, 5, 4),  // Early May BH moved to May 8
+    (2022, 5, 30), // Spring BH moved to Jun 2
+];
+
 fn lse_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        nth(5, Weekday::Mon, 1),
-        nth(5, Weekday::Mon, -1),
-        nth(8, Weekday::Mon, -1),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),        // New Year (substitute to Monday)
+        easter(-2),                   // Good Friday
+        easter(1),                    // Easter Monday
+        nth(5, Weekday::Mon, 1),      // Early May bank holiday
+        nth(5, Weekday::Mon, -1),     // Spring bank holiday
+        nth(8, Weekday::Mon, -1),     // Summer bank holiday
+        christmas_boxing(),           // Christmas + Boxing (substitute)
+        HolidayRule::Tabulated { table: LSE_ONE_OFFS },
     ]
 }
 
@@ -971,13 +1089,15 @@ fn xetra_trading_hours() -> TradingHours {
 }
 
 fn euronext_paris_rules() -> Vec<HolidayRule> {
+    // Euronext does not observe substitute days: a holiday falling on a weekend
+    // is simply lost, so all fixed dates use no-roll.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
     ]
 }
 
@@ -991,16 +1111,15 @@ fn euronext_paris_trading_hours() -> TradingHours {
 
 fn tsx_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        nth(2, Weekday::Mon, 3),
-        easter(-2),
-        nth(5, Weekday::Mon, -1),
-        fixed(7, 1, None),
-        nth(8, Weekday::Mon, 1),
-        nth(9, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, 2),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),                          // New Year (substitute)
+        nth_between(2, Weekday::Mon, 3, Some(2008), None), // Family Day (since 2008)
+        easter(-2),                                     // Good Friday
+        weekday_on_or_before(5, 24, Weekday::Mon, None), // Victoria Day
+        fixed_fwd(7, 1, None),                          // Canada Day (substitute)
+        nth(8, Weekday::Mon, 1),                        // Civic Holiday
+        nth(9, Weekday::Mon, 1),                        // Labour Day
+        nth(10, Weekday::Mon, 2),                       // Thanksgiving
+        christmas_boxing(),                             // Christmas + Boxing
     ]
 }
 
@@ -1104,13 +1223,14 @@ fn nyse_early_closes() -> Vec<EarlyCloseRule> {
 /// Generic European Christian-calendar holidays: NY, Good Friday,
 /// Easter Monday, May Day, Christmas, Boxing Day. Used as a baseline.
 fn euro_basic_rules() -> Vec<HolidayRule> {
+    // Continental European exchanges do not observe substitute days.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
     ]
 }
 
@@ -1123,41 +1243,20 @@ fn euronext_hours(tz: chrono_tz::Tz) -> TradingHours {
     )
 }
 
+// Euronext harmonized its calendar: Amsterdam, Brussels and Lisbon observe the
+// same six exchange holidays as Paris (NY, Good Friday, Easter Monday, May 1,
+// Christmas, Boxing Day). National holidays (King's Day, Ascension, Whit
+// Monday, Carnival) are not exchange closures.
 fn xams_rules() -> Vec<HolidayRule> {
-    // Amsterdam: NY, Good Friday, Easter Mon, King's Day (Apr 27, since 2014),
-    // Ascension (+39), Whit Monday (+50), Christmas, Boxing Day.
-    vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        fixed_no_roll(4, 27, Some(2014)),
-        easter(39),
-        easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-    ]
+    euro_basic_rules()
 }
 
 fn xbru_rules() -> Vec<HolidayRule> {
-    // Brussels: NY, Good Friday, Easter Mon, Labour, Ascension, Whit Mon,
-    // Christmas, Boxing Day.
-    vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        fixed(5, 1, None),
-        easter(39),
-        easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-    ]
+    euro_basic_rules()
 }
 
 fn xlis_rules() -> Vec<HolidayRule> {
-    // Lisbon: subset of euro_basic + Carnival (Easter -47).
-    let mut r = euro_basic_rules();
-    r.push(easter(-47));
-    r
+    euro_basic_rules()
 }
 
 fn xmil_rules() -> Vec<HolidayRule> {
@@ -2493,7 +2592,8 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             lse_rules(),
             Some(lse_trading_hours()),
-        ),
+        )
+        .with_exceptions(LSE_MOVED),
         Tse => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -3020,16 +3120,64 @@ mod tests {
     }
 
     #[test]
-    fn nyse_juneteenth_first_year_2021() {
+    fn nyse_juneteenth_first_year_2022() {
         let cal = calendar_for_exchange("XNYS").unwrap();
+        // NYSE first observed Juneteenth in 2022; the market was open on
+        // 2021-06-18 (federal holiday established too late to be observed).
         assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2020, 6, 19).unwrap()));
-        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 6, 18).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2021, 6, 18).unwrap()));
+        // 2022-06-19 was a Sunday, observed Monday 2022-06-20.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 6, 20).unwrap()));
+    }
+
+    #[test]
+    fn nyse_carter_day_of_mourning_2025() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        // Jan 9, 2025 was a Thursday, closed for President Carter's funeral.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 9).unwrap()));
+        // Adjacent trading days remain open.
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 8).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 10).unwrap()));
+    }
+
+    #[test]
+    fn nyse_special_closures_9_11_and_sandy() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2001, 9, 11).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2012, 10, 29).unwrap()));
     }
 
     #[test]
     fn lse_easter_monday_2024() {
         let cal = calendar_for_exchange("XLON").unwrap();
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()));
+    }
+
+    #[test]
+    fn tsx_victoria_day_and_substitution() {
+        let cal = calendar_for_exchange("XTSE").unwrap();
+        // Victoria Day = Monday on or before May 24 (not last Monday of May).
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 5, 20).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2024, 5, 27).unwrap()));
+        // Canada Day 2023-07-01 Sat → substitute Mon Jul 3.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 7, 3).unwrap()));
+    }
+
+    #[test]
+    fn lse_bank_holiday_substitution_and_oneoffs() {
+        let cal = calendar_for_exchange("XLON").unwrap();
+        // New Year 2022-01-01 Sat → substitute Mon Jan 3.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 1, 3).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2022, 1, 1).unwrap()));
+        // Christmas 2021: Dec 25 Sat → Mon 27, Boxing → Tue 28.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 12, 27).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 12, 28).unwrap()));
+        // One-off closures.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 9, 19).unwrap())); // Queen funeral
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 5, 8).unwrap())); // Coronation
+        // Spring bank holiday moved in 2022: May 30 traded, Jun 2 closed.
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2022, 5, 30).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 6, 2).unwrap()));
     }
 
     #[test]
@@ -3413,11 +3561,11 @@ mod tests {
     }
 
     #[test]
-    fn xams_kingsday_2024() {
-        // Apr 27 2024 falls on a Saturday; King's Day skipped (no roll).
-        // Test 2023 instead: Apr 27 2023 = Thursday, holiday.
+    fn xams_no_kingsday_closure() {
+        // Euronext Amsterdam does not close for King's Day; it observes only the
+        // six harmonized Euronext holidays. Apr 27 2023 was a trading day.
         let cal = calendar_for_exchange("XAMS").unwrap();
-        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 4, 27).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2023, 4, 27).unwrap()));
     }
 
     #[test]
