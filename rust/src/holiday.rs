@@ -82,18 +82,21 @@ pub enum HolidayRule {
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
-    /// A Chinese lunisolar date (`month`/`day`, non-leap) plus an offset in days,
-    /// resolved astronomically in China Standard Time.
+    /// A lunisolar date (`month`/`day`, non-leap) plus an offset in days,
+    /// resolved astronomically at meridian `meridian` (day fraction east of UTC:
+    /// `lunar::CST` for China/HK/Taiwan, `lunar::KST` for Korea).
     ChineseLunar {
         month: u32,
         day: u32,
         offset_days: i64,
+        meridian: f64,
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
     /// Qingming / Ching Ming (solar term at 15° solar longitude) plus an offset.
     Qingming {
         offset_days: i64,
+        meridian: f64,
         since_year: Option<i32>,
         until_year: Option<i32>,
     },
@@ -251,24 +254,26 @@ impl HolidayRule {
                 month,
                 day,
                 offset_days,
+                meridian,
                 since_year,
                 until_year,
             } => {
                 if !in_window(year, *since_year, *until_year) {
                     return None;
                 }
-                crate::lunar::lunar_to_gregorian(year, *month, *day, false)
+                crate::lunar::lunar_to_gregorian(year, *month, *day, false, *meridian)
                     .map(|d| d + Duration::days(*offset_days))
             }
             HolidayRule::Qingming {
                 offset_days,
+                meridian,
                 since_year,
                 until_year,
             } => {
                 if !in_window(year, *since_year, *until_year) {
                     return None;
                 }
-                Some(crate::lunar::qingming(year) + Duration::days(*offset_days))
+                Some(crate::lunar::qingming(year, *meridian) + Duration::days(*offset_days))
             }
             HolidayRule::Tabulated { table } => table
                 .iter()

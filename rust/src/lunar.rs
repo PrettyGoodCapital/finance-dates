@@ -14,7 +14,6 @@ use chrono::{Datelike, NaiveDate};
 
 const PI: f64 = std::f64::consts::PI;
 const SYNODIC_MONTH: f64 = 29.530588861;
-const CST_OFFSET_DAYS: f64 = 8.0 / 24.0;
 
 fn rad(deg: f64) -> f64 {
     deg * PI / 180.0
@@ -113,14 +112,6 @@ fn new_moon_jde(k: f64) -> f64 {
     jde
 }
 
-/// Date (CST) of the new moon whose instant is nearest to `jd_guess`.
-fn new_moon_date_near(jd_guess: f64) -> NaiveDate {
-    let k = ((jd_guess - 2451550.09766) / SYNODIC_MONTH).round();
-    let jde = new_moon_jde(k);
-    let ut = jde - delta_t_days(2000.0 + (jde - 2451545.0) / 365.25);
-    jd_to_date(ut + CST_OFFSET_DAYS)
-}
-
 /// Apparent solar longitude (degrees, 0-360) at Julian Day `jd` (UT).
 fn solar_longitude(jd: f64) -> f64 {
     let t = (jd - 2451545.0) / 36525.0;
@@ -146,11 +137,12 @@ fn solar_term_jd(jd_guess: f64, angle: f64) -> f64 {
     jd
 }
 
-/// Gregorian date of the winter solstice (solar longitude 270°) in `year`.
-fn winter_solstice(year: i32) -> NaiveDate {
+/// Gregorian date of the winter solstice (solar longitude 270°) in `year`,
+/// evaluated at the meridian given by `off` (day fraction east of UTC).
+fn winter_solstice(year: i32, off: f64) -> NaiveDate {
     let guess = 2451545.0 + (year - 2000) as f64 * 365.25 + 355.0;
     let jd = solar_term_jd(guess, 270.0);
-    jd_to_date(jd + CST_OFFSET_DAYS)
+    jd_to_date(jd + off)
 }
 
 fn to_jd(date: NaiveDate) -> f64 {
@@ -175,10 +167,11 @@ struct LunarMonth {
 }
 
 /// Build the sequence of Chinese months covering `year`, numbered from the
-/// month-11 that contains the winter solstice of the previous year.
-fn chinese_months(year: i32) -> Vec<LunarMonth> {
-    let ws_prev = winter_solstice(year - 1);
-    let ws_curr = winter_solstice(year);
+/// month-11 that contains the winter solstice of the previous year, evaluated at
+/// the meridian given by `off` (day fraction east of UTC).
+fn chinese_months(year: i32, off: f64) -> Vec<LunarMonth> {
+    let ws_prev = winter_solstice(year - 1, off);
+    let ws_curr = winter_solstice(year, off);
 
     // Generate a run of consecutive new-moon start dates spanning both month-11s
     // (from ~2 months before the previous winter solstice).
@@ -188,7 +181,7 @@ fn chinese_months(year: i32) -> Vec<LunarMonth> {
     loop {
         let jde = new_moon_jde(k);
         let ut = jde - delta_t_days(2000.0 + (jde - 2451545.0) / 365.25);
-        starts.push(jd_to_date(ut + CST_OFFSET_DAYS));
+        starts.push(jd_to_date(ut + off));
         if *starts.last().unwrap() > ws_curr + chrono::Duration::days(40) {
             break;
         }
@@ -210,7 +203,7 @@ fn chinese_months(year: i32) -> Vec<LunarMonth> {
         let start = starts[i];
         let next = starts[i + 1];
         let is_leap =
-            has_leap && !leap_assigned && i > a && !contains_zhongqi(start, next);
+            has_leap && !leap_assigned && i > a && !contains_zhongqi(start, next, off);
         if is_leap {
             leap_assigned = true;
             // A leap month repeats the preceding month's number.
@@ -235,36 +228,45 @@ fn chinese_months(year: i32) -> Vec<LunarMonth> {
 /// Whether the month [start, next) contains a major solar term (a zhongqi: solar
 /// longitude at a multiple of 30°). Comparisons use China Standard Time civil
 /// dates so the month boundary and the term fall on the same clock.
-fn contains_zhongqi(start: NaiveDate, next: NaiveDate) -> bool {
+fn contains_zhongqi(start: NaiveDate, next: NaiveDate, off: f64) -> bool {
     let s = to_jd(start);
     let l_start = solar_longitude(s);
     // The next zhongqi angle at or after the longitude at `start`.
     let angle = ((l_start / 30.0).ceil() * 30.0).rem_euclid(360.0);
     let jd_term = solar_term_jd(s + 5.0, angle);
-    let term_date = jd_to_date(jd_term + CST_OFFSET_DAYS);
+    let term_date = jd_to_date(jd_term + off);
     term_date >= start && term_date < next
 }
 
-/// Gregorian date of the `day`-th day of lunar `month` (1-12) in `year`.
-/// `leap` selects the leap month of that number when present.
-pub fn lunar_to_gregorian(year: i32, month: u32, day: u32, leap: bool) -> Option<NaiveDate> {
-    let months = chinese_months(year);
-    let m = months
-        .iter()
-        .find(|m| m.number == month && m.leap == leap)?;
+/// China Standard Time (UTC+8) meridian offset — the default lunisolar calendar.
+pub const CST: f64 = 8.0 / 24.0;
+/// Korea Standard Time (UTC+9) meridian offset — the Korean lunisolar calendar.
+pub const KST: f64 = 9.0 / 24.0;
+
+/// Gregorian date of the `day`-th day of lunar `month` (1-12) in `year`, at the
+/// meridian `off` (use [`CST`] or [`KST`]). `leap` selects the leap month.
+pub fn lunar_to_gregorian(
+    year: i32,
+    month: u32,
+    day: u32,
+    leap: bool,
+    off: f64,
+) -> Option<NaiveDate> {
+    let months = chinese_months(year, off);
+    let m = months.iter().find(|m| m.number == month && m.leap == leap)?;
     Some(m.start + chrono::Duration::days(day as i64 - 1))
 }
 
-/// Gregorian date of Chinese New Year (lunar month 1, day 1) in `year`.
-pub fn chinese_new_year(year: i32) -> Option<NaiveDate> {
-    lunar_to_gregorian(year, 1, 1, false)
+/// Gregorian date of (Chinese) New Year in `year` at meridian `off`.
+pub fn chinese_new_year(year: i32, off: f64) -> Option<NaiveDate> {
+    lunar_to_gregorian(year, 1, 1, false, off)
 }
 
-/// Qingming / Ching Ming festival (solar term at 15° solar longitude), in `year`.
-pub fn qingming(year: i32) -> NaiveDate {
+/// Qingming / Ching Ming festival (solar term at 15° solar longitude) in `year`.
+pub fn qingming(year: i32, off: f64) -> NaiveDate {
     let guess = 2451545.0 + (year - 2000) as f64 * 365.25 + 94.0;
     let jd = solar_term_jd(guess, 15.0);
-    jd_to_date(jd + CST_OFFSET_DAYS)
+    jd_to_date(jd + off)
 }
 
 #[cfg(test)]
@@ -284,7 +286,7 @@ mod tests {
         ];
         for (y, m, d) in expect {
             assert_eq!(
-                chinese_new_year(y).unwrap(),
+                chinese_new_year(y, CST).unwrap(),
                 NaiveDate::from_ymd_opt(y, m, d).unwrap(),
                 "CNY {y}"
             );
@@ -293,20 +295,20 @@ mod tests {
 
     #[test]
     fn known_qingming() {
-        assert_eq!(qingming(2024), NaiveDate::from_ymd_opt(2024, 4, 4).unwrap());
-        assert_eq!(qingming(2025), NaiveDate::from_ymd_opt(2025, 4, 4).unwrap());
-        assert_eq!(qingming(2023), NaiveDate::from_ymd_opt(2023, 4, 5).unwrap());
+        assert_eq!(qingming(2024, CST), NaiveDate::from_ymd_opt(2024, 4, 4).unwrap());
+        assert_eq!(qingming(2025, CST), NaiveDate::from_ymd_opt(2025, 4, 4).unwrap());
+        assert_eq!(qingming(2023, CST), NaiveDate::from_ymd_opt(2023, 4, 5).unwrap());
     }
 
     #[test]
     fn mid_autumn_dragon_boat() {
         // Dragon Boat = lunar 5/5, Mid-Autumn = lunar 8/15.
         assert_eq!(
-            lunar_to_gregorian(2024, 5, 5, false).unwrap(),
+            lunar_to_gregorian(2024, 5, 5, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2024, 6, 10).unwrap()
         );
         assert_eq!(
-            lunar_to_gregorian(2024, 8, 15, false).unwrap(),
+            lunar_to_gregorian(2024, 8, 15, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2024, 9, 17).unwrap()
         );
     }
@@ -316,19 +318,19 @@ mod tests {
         // Years with a leap month exercise the month-numbering logic:
         // 2020 (leap 4), 2023 (leap 2), 2025 (leap 6).
         assert_eq!(
-            lunar_to_gregorian(2020, 5, 5, false).unwrap(),
+            lunar_to_gregorian(2020, 5, 5, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2020, 6, 25).unwrap()
         );
         assert_eq!(
-            lunar_to_gregorian(2020, 8, 15, false).unwrap(),
+            lunar_to_gregorian(2020, 8, 15, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2020, 10, 1).unwrap()
         );
         assert_eq!(
-            lunar_to_gregorian(2023, 8, 15, false).unwrap(),
+            lunar_to_gregorian(2023, 8, 15, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2023, 9, 29).unwrap()
         );
         assert_eq!(
-            lunar_to_gregorian(2025, 8, 15, false).unwrap(),
+            lunar_to_gregorian(2025, 8, 15, false, CST).unwrap(),
             NaiveDate::from_ymd_opt(2025, 10, 6).unwrap()
         );
     }

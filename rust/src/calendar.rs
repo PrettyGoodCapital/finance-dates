@@ -789,12 +789,14 @@ fn apply_japanese_adjustment(set: &mut BTreeSet<NaiveDate>) {
     set.extend(national);
 }
 
-/// Chinese lunisolar holiday: `month`/`day` (non-leap) plus `offset_days`.
+/// Chinese lunisolar holiday (China/HK/Taiwan meridian): `month`/`day` (non-leap)
+/// plus `offset_days`.
 fn lunar(month: u32, day: u32, offset_days: i64) -> HolidayRule {
     HolidayRule::ChineseLunar {
         month,
         day,
         offset_days,
+        meridian: crate::lunar::CST,
         since_year: None,
         until_year: None,
     }
@@ -806,15 +808,29 @@ fn lunar_since(month: u32, day: u32, offset_days: i64, since: i32) -> HolidayRul
         month,
         day,
         offset_days,
+        meridian: crate::lunar::CST,
         since_year: Some(since),
         until_year: None,
     }
 }
 
-/// Qingming / Ching Ming festival.
+/// Korean lunisolar holiday (KST meridian): `month`/`day` plus `offset_days`.
+fn lunar_kr(month: u32, day: u32, offset_days: i64) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        meridian: crate::lunar::KST,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Qingming / Ching Ming festival (China/HK/Taiwan meridian).
 fn qingming() -> HolidayRule {
     HolidayRule::Qingming {
         offset_days: 0,
+        meridian: crate::lunar::CST,
         since_year: None,
         until_year: None,
     }
@@ -1914,60 +1930,87 @@ fn xdub_hours() -> TradingHours {
 // Asia / Pacific
 
 fn xkrx_rules() -> Vec<HolidayRule> {
-    // Korea Exchange: tabulated lunar holidays (Seollal, Chuseok). For
-    // accuracy these are baked in as lookup tables 2020-2030.
-    let seollal: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 24),
-        (2020, 1, 27),
-        (2021, 2, 11),
-        (2021, 2, 12),
-        (2022, 1, 31),
-        (2022, 2, 1),
-        (2022, 2, 2),
-        (2023, 1, 23),
-        (2023, 1, 24),
-        (2024, 2, 9),
-        (2024, 2, 12),
-        (2025, 1, 28),
-        (2025, 1, 29),
-        (2025, 1, 30),
-        (2026, 2, 16),
-        (2026, 2, 17),
-        (2026, 2, 18),
-    ];
-    let chuseok: &'static [(i32, u32, u32)] = &[
-        (2020, 9, 30),
-        (2020, 10, 1),
-        (2020, 10, 2),
-        (2021, 9, 20),
-        (2021, 9, 21),
-        (2021, 9, 22),
-        (2022, 9, 9),
-        (2022, 9, 12),
-        (2023, 9, 28),
-        (2023, 9, 29),
-        (2024, 9, 16),
-        (2024, 9, 17),
-        (2024, 9, 18),
-        (2025, 10, 6),
-        (2025, 10, 7),
-        (2025, 10, 8),
-        (2026, 9, 24),
-        (2026, 9, 25),
-    ];
+    // Korea Exchange. Seollal and Chuseok are three-day festivals centred on the
+    // lunar new year and Mid-Autumn; lunar dates are computed astronomically.
+    // Substitute holidays are added by the Korean adjustment; temporary/election
+    // closures are tabulated.
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: seollal },
-        fixed_no_roll(3, 1, None),  // Independence Movement
-        fixed_no_roll(5, 5, None),  // Children's Day
-        fixed_no_roll(6, 6, None),  // Memorial Day
+        fixed_no_roll(1, 1, None),
+        lunar_kr(1, 1, -1), // Seollal eve
+        lunar_kr(1, 1, 0),  // Seollal
+        lunar_kr(1, 1, 1),  // day after Seollal
+        fixed_no_roll(3, 1, None), // Independence Movement Day
+        fixed_no_roll(5, 1, None), // Labour Day
+        fixed_no_roll(5, 5, None), // Children's Day
+        lunar_kr(4, 8, 0),            // Buddha's Birthday
+        fixed_no_roll(6, 6, None), // Memorial Day
         fixed_no_roll(8, 15, None), // Liberation Day
-        HolidayRule::Tabulated { table: chuseok },
-        fixed_no_roll(10, 3, None), // National Foundation
+        lunar_kr(8, 15, -1), // Chuseok eve
+        lunar_kr(8, 15, 0),  // Chuseok
+        lunar_kr(8, 15, 1),  // day after Chuseok
+        fixed_no_roll(10, 3, None), // National Foundation Day
         fixed_no_roll(10, 9, None), // Hangul Day
-        fixed(12, 25, None),
+        fixed_no_roll(12, 25, None), // Christmas
+        fixed_prev_fri(12, 31),      // Exchange year-end
+        HolidayRule::Tabulated { table: KRX_ONE_OFFS },
     ]
 }
+
+/// Korean substitute holidays and temporary/election-day market closures. The
+/// substitute-holiday law changed in 2014/2021/2023 (which holidays qualify and
+/// whether Saturday counts); these observed dates are tabulated for 2015-2030.
+static KRX_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 8, 14),
+    (2015, 9, 29),
+    (2016, 2, 10),
+    (2016, 4, 13),
+    (2016, 5, 6),
+    (2017, 1, 30),
+    (2017, 5, 9),
+    (2017, 10, 2),
+    (2017, 10, 6),
+    (2018, 5, 7),
+    (2018, 6, 13),
+    (2018, 9, 26),
+    (2019, 5, 6),
+    (2020, 1, 27),
+    (2020, 4, 15),
+    (2020, 8, 17),
+    (2021, 8, 16),
+    (2021, 10, 4),
+    (2021, 10, 11),
+    (2022, 3, 9),
+    (2022, 6, 1),
+    (2022, 9, 12),
+    (2022, 10, 10),
+    (2023, 1, 24),
+    (2023, 5, 29),
+    (2023, 10, 2),
+    (2024, 2, 12),
+    (2024, 4, 10),
+    (2024, 5, 6),
+    (2024, 10, 1),
+    (2025, 1, 27),
+    (2025, 3, 3),
+    (2025, 5, 6),
+    (2025, 6, 3),
+    (2025, 10, 8),
+    (2026, 3, 2),
+    (2026, 5, 25),
+    (2026, 8, 17),
+    (2026, 10, 5),
+    (2027, 2, 9),
+    (2027, 8, 16),
+    (2027, 10, 4),
+    (2027, 10, 11),
+    (2027, 12, 27),
+    (2028, 10, 5),
+    (2029, 5, 7),
+    (2029, 5, 21),
+    (2029, 9, 24),
+    (2030, 2, 5),
+    (2030, 5, 6),
+];
 
 fn xkrx_hours() -> TradingHours {
     TradingHours::new(
