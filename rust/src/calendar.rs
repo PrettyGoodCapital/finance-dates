@@ -89,8 +89,29 @@ pub struct Calendar {
     /// at most one date per year, paired with a local close time that
     /// replaces the normal session close on that date.
     pub early_closes: Vec<EarlyCloseRule>,
+    /// Dates a rule would produce but that the venue did not actually observe
+    /// (e.g. a bank holiday moved to a different day in a single year).
+    pub exceptions: BTreeSet<NaiveDate>,
+    /// Post-processing applied to the computed holiday set (e.g. Japanese
+    /// substitute and citizens' holidays).
+    pub adjustment: HolidayAdjustment,
     cache: HolidayCache,
     early_cache: EarlyCloseCache,
+}
+
+/// Country-specific holiday post-processing applied after the base rules.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum HolidayAdjustment {
+    #[default]
+    None,
+    /// Japan: a national holiday on Sunday moves to the next non-holiday day
+    /// (substitute holiday), and a weekday between two holidays becomes a
+    /// holiday (citizens' holiday). The exchange-only year-end/new-year days
+    /// (Jan 2-3, Dec 31) are excluded from this computation.
+    Japanese,
+    /// Hong Kong: a general holiday on Sunday is observed on the next day that
+    /// is not already a holiday.
+    HongKong,
 }
 
 /// An early-close rule. `rule` resolves to a date (using the same machinery
@@ -163,14 +184,34 @@ impl Calendar {
             trading_hours,
             schedules: Vec::new(),
             early_closes: Vec::new(),
+            exceptions: BTreeSet::new(),
+            adjustment: HolidayAdjustment::None,
             cache: HolidayCache::default(),
             early_cache: EarlyCloseCache::default(),
         }
     }
 
+    /// Builder: set country-specific holiday post-processing.
+    pub fn with_adjustment(mut self, adjustment: HolidayAdjustment) -> Self {
+        self.adjustment = adjustment;
+        self.cache = HolidayCache::default();
+        self
+    }
+
     /// Builder: attach early-close rules.
     pub fn with_early_closes(mut self, ec: Vec<EarlyCloseRule>) -> Self {
         self.early_closes = ec;
+        self
+    }
+
+    /// Builder: mark `(year, month, day)` dates that rules would produce but the
+    /// venue did not actually close on (holiday moved to another day that year).
+    pub fn with_exceptions(mut self, dates: &[(i32, u32, u32)]) -> Self {
+        self.exceptions = dates
+            .iter()
+            .filter_map(|(y, m, d)| NaiveDate::from_ymd_opt(*y, *m, *d))
+            .collect();
+        self.cache = HolidayCache::default();
         self
     }
 
@@ -207,6 +248,9 @@ impl Calendar {
     }
 
     fn is_holiday_uncached(&self, date: NaiveDate) -> bool {
+        if self.exceptions.contains(&date) {
+            return false;
+        }
         let schedule = self.schedule_for(date);
         schedule
             .rules
@@ -257,6 +301,11 @@ impl Calendar {
                 }
                 d += Duration::days(1);
             }
+        }
+        match self.adjustment {
+            HolidayAdjustment::Japanese => apply_japanese_adjustment(&mut set),
+            HolidayAdjustment::HongKong => apply_sunday_substitute(&mut set),
+            HolidayAdjustment::None => {}
         }
         let arc = Arc::new(set);
         self.cache.inner.write().insert(year, arc.clone());
@@ -545,6 +594,7 @@ fn fixed(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
         day,
         roll: WeekendRoll::NearestWeekday,
         since_year,
+        until_year: None,
     }
 }
 
@@ -554,6 +604,47 @@ fn fixed_no_roll(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
         day,
         roll: WeekendRoll::None,
         since_year,
+        until_year: None,
+    }
+}
+
+/// Non-rolling fixed date restricted to `[since, until]` inclusive year bounds.
+fn fixed_between(
+    month: u32,
+    day: u32,
+    since_year: Option<i32>,
+    until_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::None,
+        since_year,
+        until_year,
+    }
+}
+
+/// Fixed date rolled back to the preceding Friday when it lands on a weekend
+/// (year-end closure convention at SIX, B3, BVC).
+fn fixed_prev_fri(month: u32, day: u32) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::PrecedingFriday,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Fixed date rolled forward to Monday when it lands on a weekend (UK/
+/// Commonwealth substitution).
+fn fixed_fwd(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::ForwardMonday,
+        since_year,
+        until_year: None,
     }
 }
 
@@ -563,6 +654,24 @@ fn nth(month: u32, weekday: Weekday, n: i32) -> HolidayRule {
         weekday,
         n,
         since_year: None,
+        until_year: None,
+    }
+}
+
+/// Nth weekday restricted to `[since, until]` inclusive year bounds.
+fn nth_between(
+    month: u32,
+    weekday: Weekday,
+    n: i32,
+    since_year: Option<i32>,
+    until_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::NthWeekday {
+        month,
+        weekday,
+        n,
+        since_year,
+        until_year,
     }
 }
 
@@ -570,10 +679,203 @@ fn easter(offset_days: i32) -> HolidayRule {
     HolidayRule::EasterOffset {
         offset_days,
         since_year: None,
+        until_year: None,
+    }
+}
+
+/// Easter offset restricted to `[since, until]` inclusive year bounds.
+fn easter_between(
+    offset_days: i32,
+    since_year: Option<i32>,
+    until_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::EasterOffset {
+        offset_days,
+        since_year,
+        until_year,
+    }
+}
+
+/// Christmas Day + Boxing Day with UK/Commonwealth weekend substitution.
+fn christmas_boxing() -> HolidayRule {
+    consecutive_pair(12, 25, WeekendRoll::ForwardMonday)
+}
+
+/// A consecutive-day holiday pair observed via `roll` with collision bump.
+fn consecutive_pair(month: u32, day: u32, roll: WeekendRoll) -> HolidayRule {
+    HolidayRule::ConsecutivePair {
+        month,
+        day,
+        roll,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Fixed date substituted to Monday only when it lands on a Sunday (South Africa).
+fn fixed_sun(month: u32, day: u32, since_year: Option<i32>) -> HolidayRule {
+    HolidayRule::Fixed {
+        month,
+        day,
+        roll: WeekendRoll::SundayToMonday,
+        since_year,
+        until_year: None,
+    }
+}
+
+/// Latest `weekday` on or before `month`/`day` (e.g. Victoria Day).
+fn weekday_on_or_before(
+    month: u32,
+    day: u32,
+    weekday: Weekday,
+    since_year: Option<i32>,
+) -> HolidayRule {
+    HolidayRule::WeekdayOnOrBefore {
+        month,
+        day,
+        weekday,
+        since_year,
+        until_year: None,
+    }
+}
+
+/// Move each Sunday holiday to the next day that is not already a holiday.
+fn apply_sunday_substitute(set: &mut BTreeSet<NaiveDate>) {
+    let sundays: Vec<NaiveDate> = set
+        .iter()
+        .filter(|d| d.weekday() == Weekday::Sun)
+        .cloned()
+        .collect();
+    for d in sundays {
+        let mut e = d + Duration::days(1);
+        while set.contains(&e) {
+            e += Duration::days(1);
+        }
+        set.insert(e);
+    }
+}
+
+/// Apply Japanese substitute and citizens' holidays to a computed holiday set.
+fn apply_japanese_adjustment(set: &mut BTreeSet<NaiveDate>) {
+    let is_exchange_only = |d: &NaiveDate| {
+        (d.month() == 1 && (d.day() == 2 || d.day() == 3)) || (d.month() == 12 && d.day() == 31)
+    };
+    // National holidays only (exclude the exchange-only year-end/new-year days).
+    let mut national: BTreeSet<NaiveDate> = set
+        .iter()
+        .filter(|d| !is_exchange_only(d))
+        .cloned()
+        .collect();
+
+    // Substitute holiday: a national holiday on Sunday moves to the next day
+    // that is not already a national holiday.
+    let sundays: Vec<NaiveDate> = national
+        .iter()
+        .filter(|d| d.weekday() == Weekday::Sun)
+        .cloned()
+        .collect();
+    for d in sundays {
+        let mut e = d + Duration::days(1);
+        while national.contains(&e) {
+            e += Duration::days(1);
+        }
+        national.insert(e);
+    }
+
+    // Citizens' holiday: a single weekday sandwiched between two national holidays.
+    let extra: Vec<NaiveDate> = national
+        .iter()
+        .filter_map(|d| {
+            let mid = *d + Duration::days(1);
+            let next = *d + Duration::days(2);
+            if !national.contains(&mid) && national.contains(&next) && mid.weekday() != Weekday::Sun
+            {
+                Some(mid)
+            } else {
+                None
+            }
+        })
+        .collect();
+    national.extend(extra);
+
+    set.extend(national);
+}
+
+/// Chinese lunisolar holiday (China/HK/Taiwan meridian): `month`/`day` (non-leap)
+/// plus `offset_days`.
+fn lunar(month: u32, day: u32, offset_days: i64) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        meridian: crate::lunar::CST,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Chinese lunisolar holiday effective from `since`.
+fn lunar_since(month: u32, day: u32, offset_days: i64, since: i32) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        meridian: crate::lunar::CST,
+        since_year: Some(since),
+        until_year: None,
+    }
+}
+
+/// Korean lunisolar holiday (KST meridian): `month`/`day` plus `offset_days`.
+fn lunar_kr(month: u32, day: u32, offset_days: i64) -> HolidayRule {
+    HolidayRule::ChineseLunar {
+        month,
+        day,
+        offset_days,
+        meridian: crate::lunar::KST,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Qingming / Ching Ming festival (China/HK/Taiwan meridian).
+fn qingming() -> HolidayRule {
+    HolidayRule::Qingming {
+        offset_days: 0,
+        meridian: crate::lunar::CST,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// Colombian Emiliani-law holiday: observed the Monday on or after `month`/`day`.
+fn emiliani(month: u32, day: u32) -> HolidayRule {
+    HolidayRule::WeekdayOnOrAfter {
+        month,
+        day,
+        weekday: Weekday::Mon,
+        since_year: None,
+        until_year: None,
     }
 }
 
 // Built-in calendars
+
+/// Ad-hoc, unscheduled full-day US equity/derivative closures (national days
+/// of mourning, 9/11, Hurricane Sandy). These do not follow any recurring rule
+/// and must be tabulated explicitly. Shared by NYSE/NASDAQ and CFE (Cboe).
+static US_SPECIAL_CLOSURES: &[(i32, u32, u32)] = &[
+    (2001, 9, 11), // September 11 attacks
+    (2001, 9, 12),
+    (2001, 9, 13),
+    (2001, 9, 14),
+    (2004, 6, 11),  // President Reagan, day of mourning
+    (2007, 1, 2),   // President Ford, day of mourning
+    (2012, 10, 29), // Hurricane Sandy
+    (2012, 10, 30),
+    (2018, 12, 5), // President G.H.W. Bush, day of mourning
+    (2025, 1, 9),  // President Carter, day of mourning
+];
 
 fn nyse_rules() -> Vec<HolidayRule> {
     vec![
@@ -582,11 +884,14 @@ fn nyse_rules() -> Vec<HolidayRule> {
         nth(2, Weekday::Mon, 3),
         easter(-2),
         nth(5, Weekday::Mon, -1),
-        fixed(6, 19, Some(2021)),
+        fixed(6, 19, Some(2022)),
         fixed(7, 4, None),
         nth(9, Weekday::Mon, 1),
         nth(11, Weekday::Thu, 4),
         fixed(12, 25, None),
+        HolidayRule::Tabulated {
+            table: US_SPECIAL_CLOSURES,
+        },
     ]
 }
 
@@ -713,6 +1018,9 @@ fn cfe_rules() -> Vec<HolidayRule> {
         nth(9, Weekday::Mon, 1),
         nth(11, Weekday::Thu, 4),
         fixed(12, 25, None),
+        HolidayRule::Tabulated {
+            table: US_SPECIAL_CLOSURES,
+        },
     ]
 }
 
@@ -776,16 +1084,35 @@ fn crypto_rules() -> Vec<HolidayRule> {
     vec![]
 }
 
+/// One-off LSE closures and moved bank holidays (our own record of UK events;
+/// pmc is used only to cross-check).
+static LSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2020, 5, 8),  // VE Day 75th anniversary (early May BH moved from May 4)
+    (2022, 6, 2),  // Spring bank holiday moved here for the Platinum Jubilee
+    (2022, 6, 3),  // Platinum Jubilee extra bank holiday
+    (2022, 9, 19), // State funeral of Queen Elizabeth II
+    (2023, 5, 8),  // Coronation of King Charles III
+];
+
+/// Dates the recurring bank-holiday rules produce but that were moved elsewhere
+/// in that year (so the exchange actually traded on them).
+static LSE_MOVED: &[(i32, u32, u32)] = &[
+    (2020, 5, 4),  // Early May BH moved to May 8
+    (2022, 5, 30), // Spring BH moved to Jun 2
+];
+
 fn lse_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        nth(5, Weekday::Mon, 1),
-        nth(5, Weekday::Mon, -1),
-        nth(8, Weekday::Mon, -1),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),    // New Year (substitute to Monday)
+        easter(-2),               // Good Friday
+        easter(1),                // Easter Monday
+        nth(5, Weekday::Mon, 1),  // Early May bank holiday
+        nth(5, Weekday::Mon, -1), // Spring bank holiday
+        nth(8, Weekday::Mon, -1), // Summer bank holiday
+        christmas_boxing(),       // Christmas + Boxing (substitute)
+        HolidayRule::Tabulated {
+            table: LSE_ONE_OFFS,
+        },
     ]
 }
 
@@ -797,25 +1124,69 @@ fn lse_trading_hours() -> TradingHours {
     )
 }
 
+/// Japanese vernal / autumnal equinox rule constructor.
+fn jp_equinox(spring: bool) -> HolidayRule {
+    HolidayRule::JapaneseEquinox {
+        spring,
+        since_year: None,
+        until_year: None,
+    }
+}
+
+/// One-off JPX closures: 2019 imperial transition and the Tokyo 2020 Olympics
+/// holiday moves (Games held in 2021). Substitute/citizens' days are derived
+/// automatically by the Japanese adjustment.
+static TSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2019, 5, 1),   // Enthronement of Emperor Naruhito
+    (2019, 10, 22), // Enthronement ceremony
+    (2020, 7, 23),  // Marine Day (moved for Olympics)
+    (2020, 7, 24),  // Sports Day (moved)
+    (2020, 8, 10),  // Mountain Day (moved)
+    (2020, 10, 1),  // Full-day outage (Arrowhead system failure)
+    (2021, 7, 22),  // Marine Day (moved)
+    (2021, 7, 23),  // Sports Day (moved)
+    (2021, 8, 8),   // Mountain Day (moved)
+];
+
+/// Normal Happy-Monday dates suppressed in the Olympic years (moved above).
+static TSE_MOVED: &[(i32, u32, u32)] = &[
+    (2020, 7, 20),
+    (2020, 10, 12),
+    (2020, 8, 11),
+    (2021, 7, 19),
+    (2021, 10, 11),
+    (2021, 8, 11),
+];
+
 fn tse_rules() -> Vec<HolidayRule> {
     vec![
         fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 2, None),
         fixed_no_roll(1, 3, None),
-        nth(1, Weekday::Mon, 2),
-        fixed_no_roll(2, 11, None),
-        fixed_no_roll(2, 23, Some(2020)),
-        fixed_no_roll(4, 29, None),
-        fixed_no_roll(5, 3, None),
-        fixed_no_roll(5, 4, None),
-        fixed_no_roll(5, 5, None),
-        nth(7, Weekday::Mon, 3),
-        fixed_no_roll(8, 11, None),
-        nth(9, Weekday::Mon, 3),
-        nth(10, Weekday::Mon, 2),
-        fixed_no_roll(11, 3, None),
-        fixed_no_roll(11, 23, None),
-        fixed_no_roll(12, 31, None),
+        fixed_between(1, 15, None, Some(1999)), // Coming of Age (fixed pre-2000)
+        nth_between(1, Weekday::Mon, 2, Some(2000), None), // Coming of Age (2nd Mon)
+        fixed_no_roll(2, 11, None),             // National Foundation Day
+        fixed_between(12, 23, Some(1989), Some(2018)), // Emperor Akihito's birthday
+        fixed_no_roll(2, 23, Some(2020)),       // Emperor Naruhito's birthday
+        jp_equinox(true),                       // Vernal Equinox
+        fixed_no_roll(4, 29, None),             // Showa Day / Greenery Day
+        fixed_no_roll(5, 3, None),              // Constitution Memorial Day
+        fixed_no_roll(5, 4, Some(2007)),        // Greenery Day (citizens' day before 2007)
+        fixed_no_roll(5, 5, None),              // Children's Day
+        fixed_between(7, 20, Some(1996), Some(2002)), // Marine Day (fixed)
+        nth_between(7, Weekday::Mon, 3, Some(2003), None), // Marine Day (3rd Mon)
+        fixed_no_roll(8, 11, Some(2016)),       // Mountain Day (since 2016)
+        fixed_between(9, 15, None, Some(2002)), // Respect for the Aged (fixed)
+        nth_between(9, Weekday::Mon, 3, Some(2003), None), // Respect for the Aged (3rd Mon)
+        jp_equinox(false),                      // Autumnal Equinox
+        fixed_between(10, 10, None, Some(1999)), // Health-Sports Day (fixed)
+        nth_between(10, Weekday::Mon, 2, Some(2000), None), // Sports Day (2nd Mon)
+        fixed_no_roll(11, 3, None),             // Culture Day
+        fixed_no_roll(11, 23, None),            // Labour Thanksgiving Day
+        fixed_no_roll(12, 31, None),            // Exchange year-end
+        HolidayRule::Tabulated {
+            table: TSE_ONE_OFFS,
+        },
     ]
 }
 
@@ -861,31 +1232,44 @@ fn tse_schedules() -> Vec<CalendarSchedule> {
 }
 
 fn hkex_rules() -> Vec<HolidayRule> {
-    let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 27),
-        (2021, 2, 12),
-        (2022, 2, 1),
-        (2023, 1, 23),
-        (2024, 2, 12),
-        (2025, 1, 29),
-        (2026, 2, 17),
-        (2027, 2, 8),
-        (2028, 1, 26),
-        (2029, 2, 13),
-        (2030, 2, 4),
-    ];
+    // Recurring HKEX holidays. Lunar dates are computed astronomically; Sunday
+    // closures are moved to the next day by the Hong Kong adjustment. Ad-hoc
+    // severe-weather closures (through 2023, before all-weather trading) are
+    // tabulated separately.
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: lny },
+        fixed_no_roll(1, 1, None),
+        lunar(1, 1, 0), // Lunar New Year day 1
+        lunar(1, 1, 1), // day 2
+        lunar(1, 1, 2), // day 3
+        qingming(),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(7, 1, None),
-        fixed(10, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        lunar_since(4, 8, 0, 1999), // Buddha's Birthday (public holiday since 1999)
+        lunar(5, 5, 0),             // Dragon Boat / Tuen Ng
+        fixed_no_roll(7, 1, None),  // HKSAR Establishment Day
+        lunar(8, 15, 1),            // day after Mid-Autumn Festival
+        fixed_no_roll(10, 1, None), // National Day
+        lunar(9, 9, 0),             // Chung Yeung
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        HolidayRule::Tabulated {
+            table: HKEX_ONE_OFFS,
+        },
     ]
 }
+
+/// Ad-hoc HKEX closures: the 2015 WWII 70th-anniversary holiday and typhoon /
+/// black-rainstorm signals (before HKEX moved to all-weather trading in 2024).
+static HKEX_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 9, 3),   // 70th anniversary of the end of WWII
+    (2016, 8, 2),   // Typhoon Nida
+    (2016, 10, 21), // Typhoon Haima
+    (2017, 8, 23),  // Typhoon Hato
+    (2023, 7, 17),  // Typhoon Talim
+    (2023, 9, 1),   // Super Typhoon Saola
+    (2023, 9, 8),   // Black rainstorm
+];
 
 fn hkex_trading_hours() -> TradingHours {
     // HKEX securities market continuous trading: morning 09:30-12:00,
@@ -906,28 +1290,184 @@ fn hkex_trading_hours() -> TradingHours {
 }
 
 fn sse_rules() -> Vec<HolidayRule> {
-    let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 25),
-        (2021, 2, 12),
-        (2022, 2, 1),
-        (2023, 1, 22),
-        (2024, 2, 10),
-        (2025, 1, 29),
-        (2026, 2, 17),
-        (2027, 2, 6),
-        (2028, 1, 26),
-        (2029, 2, 13),
-        (2030, 2, 3),
-    ];
+    // Shanghai. Computable anchors: New Year, the Lunar New Year core, Qingming,
+    // Labour Day, Dragon Boat, Mid-Autumn and the National Day core. The exact
+    // Golden Week spans, bridge days and make-up working days are set annually by
+    // the State Council and are tabulated (additions) / excepted (make-up days).
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: lny },
-        fixed(5, 1, None),
-        fixed(10, 1, None),
-        fixed(10, 2, None),
-        fixed(10, 3, None),
+        fixed_no_roll(1, 1, None),
+        lunar(1, 1, 0), // Spring Festival
+        lunar(1, 1, 1),
+        lunar(1, 1, 2),
+        qingming(),                 // Qingming
+        fixed_no_roll(5, 1, None),  // Labour Day
+        lunar(5, 5, 0),             // Dragon Boat
+        lunar(8, 15, 0),            // Mid-Autumn
+        fixed_no_roll(10, 1, None), // National Day
+        fixed_no_roll(10, 2, None),
+        fixed_no_roll(10, 3, None),
+        HolidayRule::Tabulated {
+            table: SSE_ONE_OFFS,
+        },
     ]
 }
+
+/// Chinese Golden Week span extensions and bridge days (annual State Council
+/// arrangements), curated from the official SSE calendar.
+static SSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 2, 18),
+    (2015, 2, 23),
+    (2015, 2, 24),
+    (2015, 4, 6),
+    (2015, 6, 22),
+    (2015, 9, 3),
+    (2015, 9, 4),
+    (2015, 10, 5),
+    (2015, 10, 6),
+    (2015, 10, 7),
+    (2016, 2, 11),
+    (2016, 2, 12),
+    (2016, 5, 2),
+    (2016, 6, 10),
+    (2016, 9, 16),
+    (2016, 10, 4),
+    (2016, 10, 5),
+    (2016, 10, 6),
+    (2016, 10, 7),
+    (2017, 1, 2),
+    (2017, 1, 27),
+    (2017, 1, 31),
+    (2017, 2, 1),
+    (2017, 2, 2),
+    (2017, 4, 3),
+    (2017, 5, 29),
+    (2017, 10, 5),
+    (2017, 10, 6),
+    (2018, 2, 15),
+    (2018, 2, 19),
+    (2018, 2, 20),
+    (2018, 2, 21),
+    (2018, 4, 6),
+    (2018, 4, 30),
+    (2018, 10, 4),
+    (2018, 10, 5),
+    (2018, 12, 31),
+    (2019, 2, 4),
+    (2019, 2, 8),
+    (2019, 5, 2),
+    (2019, 5, 3),
+    (2019, 10, 4),
+    (2019, 10, 7),
+    (2020, 1, 24),
+    (2020, 1, 28),
+    (2020, 1, 29),
+    (2020, 1, 30),
+    (2020, 1, 31),
+    (2020, 4, 6),
+    (2020, 5, 4),
+    (2020, 5, 5),
+    (2020, 6, 26),
+    (2020, 10, 5),
+    (2020, 10, 6),
+    (2020, 10, 7),
+    (2020, 10, 8),
+    (2021, 2, 11),
+    (2021, 2, 15),
+    (2021, 2, 16),
+    (2021, 2, 17),
+    (2021, 4, 5),
+    (2021, 5, 3),
+    (2021, 5, 4),
+    (2021, 5, 5),
+    (2021, 9, 20),
+    (2021, 10, 4),
+    (2021, 10, 5),
+    (2021, 10, 6),
+    (2021, 10, 7),
+    (2022, 1, 3),
+    (2022, 1, 31),
+    (2022, 2, 4),
+    (2022, 4, 4),
+    (2022, 5, 2),
+    (2022, 5, 3),
+    (2022, 5, 4),
+    (2022, 9, 12),
+    (2022, 10, 4),
+    (2022, 10, 5),
+    (2022, 10, 6),
+    (2022, 10, 7),
+    (2023, 1, 2),
+    (2023, 1, 25),
+    (2023, 1, 26),
+    (2023, 1, 27),
+    (2023, 5, 2),
+    (2023, 5, 3),
+    (2023, 6, 23),
+    (2023, 10, 4),
+    (2023, 10, 5),
+    (2023, 10, 6),
+    (2024, 2, 9),
+    (2024, 2, 13),
+    (2024, 2, 14),
+    (2024, 2, 15),
+    (2024, 2, 16),
+    (2024, 4, 5),
+    (2024, 5, 2),
+    (2024, 5, 3),
+    (2024, 9, 16),
+    (2024, 10, 4),
+    (2024, 10, 7),
+    (2025, 1, 28),
+    (2025, 2, 3),
+    (2025, 2, 4),
+    (2025, 5, 2),
+    (2025, 5, 5),
+    (2025, 6, 2),
+    (2025, 10, 7),
+    (2025, 10, 8),
+    (2026, 1, 2),
+    (2026, 2, 16),
+    (2026, 2, 20),
+    (2026, 2, 23),
+    (2026, 4, 6),
+    (2026, 5, 4),
+    (2026, 5, 5),
+    (2026, 10, 5),
+    (2026, 10, 6),
+    (2026, 10, 7),
+    (2027, 2, 5),
+    (2027, 2, 9),
+    (2027, 2, 10),
+    (2027, 2, 11),
+    (2027, 5, 3),
+    (2027, 10, 4),
+    (2027, 10, 5),
+    (2027, 10, 6),
+    (2027, 10, 7),
+    (2028, 1, 3),
+    (2028, 1, 25),
+    (2028, 1, 31),
+    (2028, 4, 3),
+    (2028, 5, 29),
+    (2028, 10, 4),
+    (2028, 10, 5),
+    (2028, 10, 6),
+    (2029, 2, 12),
+    (2029, 2, 16),
+    (2029, 4, 30),
+    (2029, 6, 18),
+    (2029, 9, 24),
+    (2029, 10, 4),
+    (2029, 10, 5),
+    (2029, 12, 31),
+    (2030, 2, 6),
+    (2030, 2, 7),
+    (2030, 2, 8),
+    (2030, 9, 13),
+    (2030, 10, 4),
+    (2030, 10, 7),
+];
 
 fn sse_trading_hours() -> TradingHours {
     // SSE stocks: continuous auction 09:30-11:30 and 13:00-14:57,
@@ -948,17 +1488,27 @@ fn sse_trading_hours() -> TradingHours {
     )
 }
 
+/// One-off Xetra closure: Reformation Day 500th anniversary (nationwide 2017).
+static XETR_ONE_OFFS: &[(i32, u32, u32)] = &[(2017, 10, 31)];
+
 fn xetra_rules() -> Vec<HolidayRule> {
+    // Xetra/Frankfurt: NY, Good Friday, Easter Monday, Labour Day, and the
+    // festive block Dec 24-26 + Dec 31. Whit Monday was observed through 2021;
+    // German Unity Day only 2016-2019.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(10, 3, None),
-        fixed(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-        fixed(12, 31, None),
+        fixed_no_roll(5, 1, None),
+        easter_between(50, None, Some(2021)), // Whit Monday (until 2021)
+        fixed_between(10, 3, Some(2016), Some(2019)), // German Unity Day (2016-2019)
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated {
+            table: XETR_ONE_OFFS,
+        },
     ]
 }
 
@@ -971,13 +1521,15 @@ fn xetra_trading_hours() -> TradingHours {
 }
 
 fn euronext_paris_rules() -> Vec<HolidayRule> {
+    // Euronext does not observe substitute days: a holiday falling on a weekend
+    // is simply lost, so all fixed dates use no-roll.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
     ]
 }
 
@@ -991,16 +1543,15 @@ fn euronext_paris_trading_hours() -> TradingHours {
 
 fn tsx_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        nth(2, Weekday::Mon, 3),
-        easter(-2),
-        nth(5, Weekday::Mon, -1),
-        fixed(7, 1, None),
-        nth(8, Weekday::Mon, 1),
-        nth(9, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, 2),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),                             // New Year (substitute)
+        nth_between(2, Weekday::Mon, 3, Some(2008), None), // Family Day (since 2008)
+        easter(-2),                                        // Good Friday
+        weekday_on_or_before(5, 24, Weekday::Mon, None),   // Victoria Day
+        fixed_fwd(7, 1, None),                             // Canada Day (substitute)
+        nth(8, Weekday::Mon, 1),                           // Civic Holiday
+        nth(9, Weekday::Mon, 1),                           // Labour Day
+        nth(10, Weekday::Mon, 2),                          // Thanksgiving
+        christmas_boxing(),                                // Christmas + Boxing
     ]
 }
 
@@ -1012,16 +1563,21 @@ fn tsx_trading_hours() -> TradingHours {
     )
 }
 
+/// One-off ASX closure: national day of mourning for Queen Elizabeth II.
+static ASX_ONE_OFFS: &[(i32, u32, u32)] = &[(2022, 9, 22)];
+
 fn asx_rules() -> Vec<HolidayRule> {
     vec![
-        fixed(1, 1, None),
-        fixed(1, 26, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 25, None),
-        nth(6, Weekday::Mon, 2),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),      // New Year (substitute)
+        fixed_fwd(1, 26, None),     // Australia Day (substitute)
+        easter(-2),                 // Good Friday
+        easter(1),                  // Easter Monday
+        fixed_no_roll(4, 25, None), // ANZAC Day (no substitute)
+        nth(6, Weekday::Mon, 2),    // King's Birthday (2nd Mon Jun)
+        christmas_boxing(),         // Christmas + Boxing
+        HolidayRule::Tabulated {
+            table: ASX_ONE_OFFS,
+        },
     ]
 }
 
@@ -1039,8 +1595,181 @@ fn nse_rules() -> Vec<HolidayRule> {
         fixed(8, 15, None),
         fixed(10, 2, None),
         fixed(12, 25, None),
+        HolidayRule::Tabulated { table: NSE_ADDS },
     ]
 }
+
+/// India: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static NSE_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 2, 17),
+    (2015, 3, 6),
+    (2015, 4, 2),
+    (2015, 4, 3),
+    (2015, 4, 14),
+    (2015, 5, 1),
+    (2015, 9, 17),
+    (2015, 9, 25),
+    (2015, 10, 22),
+    (2015, 11, 12),
+    (2015, 11, 25),
+    (2016, 3, 7),
+    (2016, 3, 24),
+    (2016, 3, 25),
+    (2016, 4, 14),
+    (2016, 4, 15),
+    (2016, 4, 19),
+    (2016, 7, 6),
+    (2016, 9, 5),
+    (2016, 9, 13),
+    (2016, 10, 11),
+    (2016, 10, 12),
+    (2016, 10, 31),
+    (2016, 11, 14),
+    (2017, 2, 24),
+    (2017, 3, 13),
+    (2017, 4, 4),
+    (2017, 4, 14),
+    (2017, 5, 1),
+    (2017, 6, 26),
+    (2017, 8, 25),
+    (2017, 10, 20),
+    (2018, 2, 13),
+    (2018, 3, 2),
+    (2018, 3, 29),
+    (2018, 3, 30),
+    (2018, 5, 1),
+    (2018, 8, 22),
+    (2018, 9, 13),
+    (2018, 9, 20),
+    (2018, 10, 18),
+    (2018, 11, 8),
+    (2018, 11, 23),
+    (2019, 3, 4),
+    (2019, 3, 21),
+    (2019, 4, 17),
+    (2019, 4, 19),
+    (2019, 4, 29),
+    (2019, 5, 1),
+    (2019, 6, 5),
+    (2019, 8, 12),
+    (2019, 9, 2),
+    (2019, 9, 10),
+    (2019, 10, 8),
+    (2019, 10, 21),
+    (2019, 10, 28),
+    (2019, 11, 12),
+    (2020, 2, 21),
+    (2020, 3, 10),
+    (2020, 4, 2),
+    (2020, 4, 6),
+    (2020, 4, 10),
+    (2020, 4, 14),
+    (2020, 5, 1),
+    (2020, 7, 31),
+    (2020, 11, 16),
+    (2020, 11, 30),
+    (2021, 3, 11),
+    (2021, 3, 29),
+    (2021, 4, 2),
+    (2021, 4, 14),
+    (2021, 4, 21),
+    (2021, 5, 13),
+    (2021, 7, 21),
+    (2021, 8, 19),
+    (2021, 9, 10),
+    (2021, 10, 15),
+    (2021, 11, 4),
+    (2021, 11, 5),
+    (2021, 11, 19),
+    (2022, 3, 1),
+    (2022, 3, 18),
+    (2022, 4, 14),
+    (2022, 4, 15),
+    (2022, 5, 3),
+    (2022, 8, 9),
+    (2022, 8, 31),
+    (2022, 10, 5),
+    (2022, 10, 24),
+    (2022, 10, 26),
+    (2022, 11, 8),
+    (2023, 3, 7),
+    (2023, 3, 30),
+    (2023, 4, 4),
+    (2023, 4, 7),
+    (2023, 4, 14),
+    (2023, 5, 1),
+    (2023, 6, 29),
+    (2023, 9, 19),
+    (2023, 10, 24),
+    (2023, 11, 14),
+    (2023, 11, 27),
+    (2024, 3, 8),
+    (2024, 3, 25),
+    (2024, 3, 29),
+    (2024, 4, 11),
+    (2024, 4, 17),
+    (2024, 5, 1),
+    (2024, 5, 20),
+    (2024, 6, 17),
+    (2024, 7, 17),
+    (2024, 11, 1),
+    (2024, 11, 15),
+    (2025, 2, 26),
+    (2025, 3, 14),
+    (2025, 3, 31),
+    (2025, 4, 10),
+    (2025, 4, 14),
+    (2025, 4, 18),
+    (2025, 5, 1),
+    (2025, 8, 27),
+    (2025, 10, 21),
+    (2025, 10, 22),
+    (2025, 11, 5),
+    (2026, 3, 3),
+    (2026, 3, 26),
+    (2026, 3, 31),
+    (2026, 4, 3),
+    (2026, 4, 14),
+    (2026, 5, 1),
+    (2026, 5, 28),
+    (2026, 6, 26),
+    (2026, 9, 14),
+    (2026, 10, 20),
+    (2026, 11, 10),
+    (2026, 11, 24),
+];
+static NSE_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 8, 14),
+    (2016, 10, 3),
+    (2016, 12, 26),
+    (2019, 1, 25),
+    (2020, 1, 27),
+    (2020, 8, 14),
+    (2021, 8, 16),
+    (2021, 10, 1),
+    (2021, 12, 24),
+    (2022, 10, 3),
+    (2022, 12, 26),
+    (2025, 1, 27),
+    (2026, 8, 14),
+    (2027, 1, 26),
+    (2027, 8, 16),
+    (2027, 10, 1),
+    (2027, 12, 24),
+    (2028, 1, 26),
+    (2028, 8, 15),
+    (2028, 10, 2),
+    (2028, 12, 25),
+    (2029, 1, 26),
+    (2029, 8, 15),
+    (2029, 10, 2),
+    (2029, 12, 25),
+    (2030, 1, 25),
+    (2030, 8, 15),
+    (2030, 10, 2),
+    (2030, 12, 25),
+];
 
 fn nse_trading_hours() -> TradingHours {
     TradingHours::new(
@@ -1104,13 +1833,14 @@ fn nyse_early_closes() -> Vec<EarlyCloseRule> {
 /// Generic European Christian-calendar holidays: NY, Good Friday,
 /// Easter Monday, May Day, Christmas, Boxing Day. Used as a baseline.
 fn euro_basic_rules() -> Vec<HolidayRule> {
+    // Continental European exchanges do not observe substitute days.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
     ]
 }
 
@@ -1123,60 +1853,36 @@ fn euronext_hours(tz: chrono_tz::Tz) -> TradingHours {
     )
 }
 
+// Euronext harmonized its calendar: Amsterdam, Brussels and Lisbon observe the
+// same six exchange holidays as Paris (NY, Good Friday, Easter Monday, May 1,
+// Christmas, Boxing Day). National holidays (King's Day, Ascension, Whit
+// Monday, Carnival) are not exchange closures.
 fn xams_rules() -> Vec<HolidayRule> {
-    // Amsterdam: NY, Good Friday, Easter Mon, King's Day (Apr 27, since 2014),
-    // Ascension (+39), Whit Monday (+50), Christmas, Boxing Day.
-    vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        fixed_no_roll(4, 27, Some(2014)),
-        easter(39),
-        easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-    ]
+    euro_basic_rules()
 }
 
 fn xbru_rules() -> Vec<HolidayRule> {
-    // Brussels: NY, Good Friday, Easter Mon, Labour, Ascension, Whit Mon,
-    // Christmas, Boxing Day.
-    vec![
-        fixed(1, 1, None),
-        easter(-2),
-        easter(1),
-        fixed(5, 1, None),
-        easter(39),
-        easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
-    ]
+    euro_basic_rules()
 }
 
 fn xlis_rules() -> Vec<HolidayRule> {
-    // Lisbon: subset of euro_basic + Carnival (Easter -47).
-    let mut r = euro_basic_rules();
-    r.push(easter(-47));
-    r
+    euro_basic_rules()
 }
 
 fn xmil_rules() -> Vec<HolidayRule> {
-    // Borsa Italiana (Milan): NY, Epiphany (Jan 6), Easter Mon, Liberation
-    // Day (Apr 25), Labour, Republic Day (Jun 2), Assumption (Aug 15),
-    // All Saints (Nov 1), Immaculate Conception (Dec 8), Christmas, Boxing.
+    // Euronext Milan trades the harmonized Euronext holidays plus Assumption
+    // (Aug 15) and the festive block Dec 24-26 + 31. It does not close for the
+    // other Italian national holidays.
     vec![
-        fixed(1, 1, None),
-        fixed_no_roll(1, 6, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed_no_roll(4, 25, None),
-        fixed(5, 1, None),
-        fixed_no_roll(6, 2, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(8, 15, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 8, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1189,24 +1895,23 @@ fn xmil_hours() -> TradingHours {
 }
 
 fn xmad_rules() -> Vec<HolidayRule> {
-    // BME Madrid: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Assumption, National Day (Oct 12), All Saints, Constitution (Dec 6),
-    // Immaculate (Dec 8), Christmas, Boxing.
+    // BME Madrid closes NY, Good Friday, Easter Monday, Labour Day, Christmas
+    // and Boxing Day only; it trades through the other Spanish national holidays.
     vec![
-        fixed(1, 1, None),
-        fixed_no_roll(1, 6, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        fixed_no_roll(8, 15, None),
-        fixed_no_roll(10, 12, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 6, None),
-        fixed_no_roll(12, 8, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        HolidayRule::Tabulated {
+            table: XMAD_ONE_OFFS,
+        },
     ]
 }
+
+/// One-off BME Madrid closures (festive-season closures in 2021).
+static XMAD_ONE_OFFS: &[(i32, u32, u32)] = &[(2021, 12, 24), (2021, 12, 31)];
 
 fn xmad_hours() -> TradingHours {
     TradingHours::new(
@@ -1218,18 +1923,20 @@ fn xmad_hours() -> TradingHours {
 
 fn xswx_rules() -> Vec<HolidayRule> {
     // SIX Swiss: NY, Berchtold (Jan 2), Good Friday, Easter Mon, Labour,
-    // Ascension, Whit Mon, Swiss National (Aug 1), Christmas, Boxing.
+    // Ascension, Whit Mon, Swiss National (Aug 1), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 2, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
         easter(50),
         fixed_no_roll(8, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -1242,20 +1949,21 @@ fn xswx_hours() -> TradingHours {
 }
 
 fn xosl_rules() -> Vec<HolidayRule> {
-    // Oslo Børs: NY, Maundy Thu (-3), Good Friday, Easter Mon, Labour,
-    // Constitution (May 17), Ascension, Whit Mon, Christmas Eve (half),
-    // Christmas, Boxing, NYE (half).
+    // Oslo Børs: NY, Maundy Thu, Good Friday, Easter Mon, Labour, Constitution
+    // (May 17), Ascension, Whit Mon, festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 17, None),
         easter(39),
         easter(50),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1268,20 +1976,21 @@ fn xosl_hours() -> TradingHours {
 }
 
 fn xsto_rules() -> Vec<HolidayRule> {
-    // Stockholm OMX: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Ascension, National Day (Jun 6), Midsummer Eve (Fri before Jun 20-26),
-    // Christmas Eve, Christmas, Boxing, NYE.
+    // Stockholm OMX: NY, Epiphany, Good Friday, Easter Mon, Labour, Ascension,
+    // National Day (Jun 6, since 2005), Midsummer Eve (Fri on/before Jun 25),
+    // festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
-        fixed_no_roll(6, 6, None),
+        fixed_no_roll(6, 6, Some(2005)),
+        weekday_on_or_before(6, 25, Weekday::Fri, None), // Midsummer Eve
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
         fixed_no_roll(12, 31, None),
     ]
 }
@@ -1295,20 +2004,22 @@ fn xsto_hours() -> TradingHours {
 }
 
 fn xhel_rules() -> Vec<HolidayRule> {
-    // Helsinki: NY, Epiphany, Good Friday, Easter Mon, Labour,
-    // Ascension, Midsummer Eve (skip), Independence Day (Dec 6),
-    // Christmas Eve, Christmas, Boxing.
+    // Helsinki: NY, Epiphany, Good Friday, Easter Mon, Labour, Ascension,
+    // Midsummer Eve (Fri on/before Jun 25), Independence Day (Dec 6),
+    // festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(39),
+        weekday_on_or_before(6, 25, Weekday::Fri, None), // Midsummer Eve
         fixed_no_roll(12, 6, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1322,18 +2033,22 @@ fn xhel_hours() -> TradingHours {
 
 fn xcse_rules() -> Vec<HolidayRule> {
     // Copenhagen: NY, Maundy Thu, Good Friday, Easter Mon, Great Prayer Day
-    // (was Easter+26, abolished 2024), Ascension, Constitution (Jun 5),
-    // Christmas Eve, Christmas, Boxing.
+    // (Easter+26, abolished after 2023), Ascension, Day after Ascension,
+    // Whit Monday, Constitution (Jun 5), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
+        easter_between(26, None, Some(2023)), // Great Prayer Day (until 2023)
         easter(39),
+        easter(40), // Day after Ascension (bank closing day)
+        easter(50), // Whit Monday
         fixed_no_roll(6, 5, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1346,21 +2061,24 @@ fn xcse_hours() -> TradingHours {
 }
 
 fn xice_rules() -> Vec<HolidayRule> {
-    // Iceland: NY, Maundy Thu, Good Fri, Easter Mon, First Day of Summer
-    // (skip), Labour, Ascension, Whit Mon, National Day (Jun 17),
-    // Commerce Day (skip), Christmas Eve, Christmas, Boxing.
+    // Iceland: NY, Maundy Thu, Good Fri, Easter Mon, First Day of Summer (Thu
+    // on/before Apr 25), Labour, Ascension, Whit Mon, National Day (Jun 17),
+    // Commerce Day (1st Mon Aug), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        weekday_on_or_before(4, 25, Weekday::Thu, None), // First Day of Summer
+        fixed_no_roll(5, 1, None),
         easter(39),
         easter(50),
         fixed_no_roll(6, 17, None),
+        nth(8, Weekday::Mon, 1), // Commerce Day
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1373,23 +2091,33 @@ fn xice_hours() -> TradingHours {
 }
 
 fn xwar_rules() -> Vec<HolidayRule> {
-    // Warsaw: NY, Epiphany, Easter Mon, Labour, Constitution (May 3),
-    // Corpus Christi (+60), Assumption, All Saints, Independence (Nov 11),
-    // Christmas, Boxing.
+    // Warsaw (GPW): NY, Epiphany, Good Friday, Easter Mon, Labour, Constitution
+    // (May 3), Corpus Christi (+60), Assumption, All Saints, Independence
+    // (Nov 11), festive block Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(1, 6, None),
+        easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 3, None),
         easter(60),
         fixed_no_roll(8, 15, None),
         fixed_no_roll(11, 1, None),
         fixed_no_roll(11, 11, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated {
+            table: XWAR_ONE_OFFS,
+        },
     ]
 }
+
+/// One-off GPW Warsaw closures: an exchange holiday in Jan 2018 and the
+/// centenary of Polish independence (Nov 12, 2018).
+static XWAR_ONE_OFFS: &[(i32, u32, u32)] = &[(2018, 1, 2), (2018, 11, 12)];
 
 fn xwar_hours() -> TradingHours {
     TradingHours::new(
@@ -1400,14 +2128,15 @@ fn xwar_hours() -> TradingHours {
 }
 
 fn xpra_rules() -> Vec<HolidayRule> {
-    // Prague: NY, Good Friday, Easter Mon, Labour, Liberation (May 8),
-    // Ss Cyril & Methodius (Jul 5), Jan Hus (Jul 6), Statehood (Sep 28),
-    // Independence (Oct 28), Freedom (Nov 17), Christmas Eve, Christmas, Boxing.
+    // Prague (PSE): NY, Good Friday (public holiday since 2016), Easter Mon,
+    // Labour, Liberation (May 8), Ss Cyril & Methodius (Jul 5), Jan Hus (Jul 6),
+    // Statehood (Sep 28), Independence (Oct 28), Freedom (Nov 17), festive block
+    // Dec 24-26 + 31.
     vec![
-        fixed(1, 1, None),
-        easter(-2),
+        fixed_no_roll(1, 1, None),
+        easter(-2), // Good Friday (PSE closed even before it became a public holiday)
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         fixed_no_roll(5, 8, None),
         fixed_no_roll(7, 5, None),
         fixed_no_roll(7, 6, None),
@@ -1415,8 +2144,9 @@ fn xpra_rules() -> Vec<HolidayRule> {
         fixed_no_roll(10, 28, None),
         fixed_no_roll(11, 17, None),
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1429,23 +2159,60 @@ fn xpra_hours() -> TradingHours {
 }
 
 fn xbud_rules() -> Vec<HolidayRule> {
-    // Budapest: NY, 1848 Revolution (Mar 15), Good Friday, Easter Mon,
+    // Budapest (BSE): NY, 1848 Revolution (Mar 15), Good Friday, Easter Mon,
     // Labour, Whit Mon, State Foundation (Aug 20), 1956 Revolution (Oct 23),
-    // All Saints, Christmas, Boxing.
+    // All Saints, festive block Dec 24-26 + 31. Hungary also observes irregular
+    // "bridge days" that swap a working day for a long weekend; these are
+    // announced annually and tabulated below.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         fixed_no_roll(3, 15, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
+        fixed_no_roll(5, 1, None),
         easter(50),
         fixed_no_roll(8, 20, None),
         fixed_no_roll(10, 23, None),
         fixed_no_roll(11, 1, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 24, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated {
+            table: XBUD_BRIDGE_DAYS,
+        },
     ]
 }
+
+/// Hungarian "bridge days" (munkaszüneti nap around a public holiday) — annually
+/// announced, not derivable from a rule. Filled from the exchange calendar.
+static XBUD_BRIDGE_DAYS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 8, 21),
+    (2016, 3, 14),
+    (2016, 10, 31),
+    (2018, 3, 16),
+    (2018, 4, 30),
+    (2018, 10, 22),
+    (2018, 11, 2),
+    (2019, 8, 19),
+    (2019, 12, 27),
+    (2020, 8, 21),
+    (2022, 3, 14),
+    (2022, 10, 31),
+    (2024, 8, 19),
+    (2024, 12, 27),
+    (2025, 5, 2),
+    (2025, 10, 24),
+    (2026, 1, 2),
+    (2026, 8, 21),
+    (2029, 3, 16),
+    (2029, 4, 30),
+    (2029, 10, 22),
+    (2029, 11, 2),
+    (2030, 8, 19),
+    (2030, 12, 27),
+];
 
 fn xbud_hours() -> TradingHours {
     TradingHours::new(
@@ -1456,24 +2223,27 @@ fn xbud_hours() -> TradingHours {
 }
 
 fn xwbo_rules() -> Vec<HolidayRule> {
-    // Vienna (Wiener Börse): NY, Good Friday, Easter Mon, Labour,
-    // Ascension, Whit Mon, Corpus Christi, Assumption, National (Oct 26),
-    // All Saints, Immaculate (Dec 8), Christmas Eve, Christmas, Boxing.
+    // Wiener Börse trimmed its calendar during 2018-2022 to the current set: NY,
+    // Good Friday, Easter Monday, Labour Day, National Day (Oct 26), and the
+    // festive block. Whit Monday was observed through 2022; Corpus Christi,
+    // Assumption, All Saints and Immaculate Conception only through 2018.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(1),
-        fixed(5, 1, None),
-        easter(39),
-        easter(50),
-        easter(60),
-        fixed_no_roll(8, 15, None),
-        fixed_no_roll(10, 26, None),
-        fixed_no_roll(11, 1, None),
-        fixed_no_roll(12, 8, None),
+        fixed_no_roll(5, 1, None),
+        fixed_between(1, 6, None, Some(2017)), // Epiphany (until 2017)
+        easter_between(39, None, Some(2018)),  // Ascension (until 2018)
+        easter_between(50, None, Some(2022)),  // Whit Monday (until 2022)
+        easter_between(60, None, Some(2018)),  // Corpus Christi (until 2018)
+        fixed_between(8, 15, None, Some(2018)), // Assumption (until 2018)
+        fixed_between(11, 1, None, Some(2018)), // All Saints (until 2018)
+        fixed_between(12, 8, None, Some(2018)), // Immaculate Conception (until 2018)
+        fixed_no_roll(10, 26, None),           // National Day
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_no_roll(12, 25, None),
+        fixed_no_roll(12, 26, None),
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -1485,21 +2255,26 @@ fn xwbo_hours() -> TradingHours {
     )
 }
 
+/// One-off Euronext Dublin closure: Storm Emma.
+static XDUB_ONE_OFFS: &[(i32, u32, u32)] = &[(2018, 3, 2)];
+
 fn xdub_rules() -> Vec<HolidayRule> {
-    // Euronext Dublin: NY, Saint Patrick (Mar 17), Good Friday, Easter Mon,
-    // May Day (1st Mon), June Bank (1st Mon), August Bank (1st Mon),
-    // October Bank (last Mon), Christmas, Boxing.
+    // Dublin migrated from the Irish Stock Exchange calendar to Euronext during
+    // 2018-2021. Pre-migration it closed the Irish June bank holiday and the May
+    // bank holiday; from 2019 it added the Euronext Labour Day (May 1), and the
+    // Irish May bank holiday resumed from 2021. It never closes St Patrick's Day.
     vec![
-        fixed(1, 1, None),
-        fixed(3, 17, None),
-        easter(-2),
-        easter(1),
-        nth(5, Weekday::Mon, 1),
-        nth(6, Weekday::Mon, 1),
-        nth(8, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, -1),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_fwd(1, 1, None),                             // New Year (substitute)
+        easter(-2),                                        // Good Friday
+        easter(1),                                         // Easter Monday
+        fixed_no_roll(5, 1, Some(2019)),                   // Labour Day (Euronext) since 2019
+        nth_between(5, Weekday::Mon, 1, None, Some(2018)), // May bank holiday (pre-migration)
+        nth_between(5, Weekday::Mon, 1, Some(2021), None), // May bank holiday (resumed 2021)
+        nth_between(6, Weekday::Mon, 1, None, Some(2018)), // June bank holiday (pre-migration)
+        christmas_boxing(),                                // Christmas + Boxing
+        HolidayRule::Tabulated {
+            table: XDUB_ONE_OFFS,
+        },
     ]
 }
 
@@ -1514,60 +2289,89 @@ fn xdub_hours() -> TradingHours {
 // Asia / Pacific
 
 fn xkrx_rules() -> Vec<HolidayRule> {
-    // Korea Exchange: tabulated lunar holidays (Seollal, Chuseok). For
-    // accuracy these are baked in as lookup tables 2020-2030.
-    let seollal: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 24),
-        (2020, 1, 27),
-        (2021, 2, 11),
-        (2021, 2, 12),
-        (2022, 1, 31),
-        (2022, 2, 1),
-        (2022, 2, 2),
-        (2023, 1, 23),
-        (2023, 1, 24),
-        (2024, 2, 9),
-        (2024, 2, 12),
-        (2025, 1, 28),
-        (2025, 1, 29),
-        (2025, 1, 30),
-        (2026, 2, 16),
-        (2026, 2, 17),
-        (2026, 2, 18),
-    ];
-    let chuseok: &'static [(i32, u32, u32)] = &[
-        (2020, 9, 30),
-        (2020, 10, 1),
-        (2020, 10, 2),
-        (2021, 9, 20),
-        (2021, 9, 21),
-        (2021, 9, 22),
-        (2022, 9, 9),
-        (2022, 9, 12),
-        (2023, 9, 28),
-        (2023, 9, 29),
-        (2024, 9, 16),
-        (2024, 9, 17),
-        (2024, 9, 18),
-        (2025, 10, 6),
-        (2025, 10, 7),
-        (2025, 10, 8),
-        (2026, 9, 24),
-        (2026, 9, 25),
-    ];
+    // Korea Exchange. Seollal and Chuseok are three-day festivals centred on the
+    // lunar new year and Mid-Autumn; lunar dates are computed astronomically.
+    // Substitute holidays are added by the Korean adjustment; temporary/election
+    // closures are tabulated.
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: seollal },
-        fixed_no_roll(3, 1, None),  // Independence Movement
-        fixed_no_roll(5, 5, None),  // Children's Day
-        fixed_no_roll(6, 6, None),  // Memorial Day
-        fixed_no_roll(8, 15, None), // Liberation Day
-        HolidayRule::Tabulated { table: chuseok },
-        fixed_no_roll(10, 3, None), // National Foundation
-        fixed_no_roll(10, 9, None), // Hangul Day
-        fixed(12, 25, None),
+        fixed_no_roll(1, 1, None),
+        lunar_kr(1, 1, -1),          // Seollal eve
+        lunar_kr(1, 1, 0),           // Seollal
+        lunar_kr(1, 1, 1),           // day after Seollal
+        fixed_no_roll(3, 1, None),   // Independence Movement Day
+        fixed_no_roll(5, 1, None),   // Labour Day
+        fixed_no_roll(5, 5, None),   // Children's Day
+        lunar_kr(4, 8, 0),           // Buddha's Birthday
+        fixed_no_roll(6, 6, None),   // Memorial Day
+        fixed_no_roll(8, 15, None),  // Liberation Day
+        lunar_kr(8, 15, -1),         // Chuseok eve
+        lunar_kr(8, 15, 0),          // Chuseok
+        lunar_kr(8, 15, 1),          // day after Chuseok
+        fixed_no_roll(10, 3, None),  // National Foundation Day
+        fixed_no_roll(10, 9, None),  // Hangul Day
+        fixed_no_roll(12, 25, None), // Christmas
+        fixed_prev_fri(12, 31),      // Exchange year-end
+        HolidayRule::Tabulated {
+            table: KRX_ONE_OFFS,
+        },
     ]
 }
+
+/// Korean substitute holidays and temporary/election-day market closures. The
+/// substitute-holiday law changed in 2014/2021/2023 (which holidays qualify and
+/// whether Saturday counts); these observed dates are tabulated for 2015-2030.
+static KRX_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 8, 14),
+    (2015, 9, 29),
+    (2016, 2, 10),
+    (2016, 4, 13),
+    (2016, 5, 6),
+    (2017, 1, 30),
+    (2017, 5, 9),
+    (2017, 10, 2),
+    (2017, 10, 6),
+    (2018, 5, 7),
+    (2018, 6, 13),
+    (2018, 9, 26),
+    (2019, 5, 6),
+    (2020, 1, 27),
+    (2020, 4, 15),
+    (2020, 8, 17),
+    (2021, 8, 16),
+    (2021, 10, 4),
+    (2021, 10, 11),
+    (2022, 3, 9),
+    (2022, 6, 1),
+    (2022, 9, 12),
+    (2022, 10, 10),
+    (2023, 1, 24),
+    (2023, 5, 29),
+    (2023, 10, 2),
+    (2024, 2, 12),
+    (2024, 4, 10),
+    (2024, 5, 6),
+    (2024, 10, 1),
+    (2025, 1, 27),
+    (2025, 3, 3),
+    (2025, 5, 6),
+    (2025, 6, 3),
+    (2025, 10, 8),
+    (2026, 3, 2),
+    (2026, 5, 25),
+    (2026, 8, 17),
+    (2026, 10, 5),
+    (2027, 2, 9),
+    (2027, 8, 16),
+    (2027, 10, 4),
+    (2027, 10, 11),
+    (2027, 12, 27),
+    (2028, 10, 5),
+    (2029, 5, 7),
+    (2029, 5, 21),
+    (2029, 9, 24),
+    (2030, 2, 5),
+    (2030, 5, 6),
+];
 
 fn xkrx_hours() -> TradingHours {
     TradingHours::new(
@@ -1607,8 +2411,95 @@ fn xses_rules() -> Vec<HolidayRule> {
         fixed(5, 1, None),
         fixed(8, 9, None),
         fixed(12, 25, None),
+        HolidayRule::Tabulated { table: XSES_ADDS },
     ]
 }
+
+/// Singapore: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XSES_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 2, 19),
+    (2015, 2, 20),
+    (2015, 6, 1),
+    (2015, 7, 17),
+    (2015, 8, 7),
+    (2015, 9, 11),
+    (2015, 9, 24),
+    (2015, 11, 10),
+    (2016, 2, 8),
+    (2016, 2, 9),
+    (2016, 7, 6),
+    (2016, 9, 12),
+    (2017, 1, 30),
+    (2017, 5, 10),
+    (2017, 6, 26),
+    (2017, 9, 1),
+    (2017, 10, 18),
+    (2018, 2, 16),
+    (2018, 5, 29),
+    (2018, 6, 15),
+    (2018, 8, 22),
+    (2018, 11, 6),
+    (2019, 2, 5),
+    (2019, 2, 6),
+    (2019, 5, 20),
+    (2019, 6, 5),
+    (2019, 8, 12),
+    (2019, 10, 28),
+    (2020, 5, 7),
+    (2020, 5, 25),
+    (2020, 7, 10),
+    (2020, 7, 31),
+    (2021, 5, 13),
+    (2021, 5, 26),
+    (2021, 7, 20),
+    (2021, 11, 4),
+    (2022, 5, 3),
+    (2022, 5, 16),
+    (2022, 7, 11),
+    (2022, 10, 24),
+    (2023, 6, 2),
+    (2023, 6, 29),
+    (2023, 9, 1),
+    (2023, 11, 13),
+    (2024, 4, 10),
+    (2024, 5, 22),
+    (2024, 6, 17),
+    (2024, 10, 31),
+    (2025, 3, 31),
+    (2025, 5, 12),
+    (2025, 10, 20),
+    (2026, 5, 27),
+    (2026, 6, 1),
+    (2026, 11, 9),
+];
+static XSES_SKIP: &[(i32, u32, u32)] = &[
+    (2020, 1, 24),
+    (2021, 2, 15),
+    (2021, 4, 30),
+    (2021, 12, 24),
+    (2024, 2, 13),
+    (2025, 8, 8),
+    (2027, 1, 1),
+    (2027, 3, 26),
+    (2027, 4, 30),
+    (2027, 8, 9),
+    (2027, 12, 24),
+    (2028, 4, 14),
+    (2028, 5, 1),
+    (2028, 8, 9),
+    (2028, 12, 25),
+    (2029, 1, 1),
+    (2029, 3, 30),
+    (2029, 5, 1),
+    (2029, 8, 9),
+    (2029, 12, 25),
+    (2030, 1, 1),
+    (2030, 4, 19),
+    (2030, 5, 1),
+    (2030, 8, 9),
+    (2030, 12, 25),
+];
 
 fn xses_hours() -> TradingHours {
     TradingHours::new(
@@ -1619,28 +2510,174 @@ fn xses_hours() -> TradingHours {
 }
 
 fn xtai_rules() -> Vec<HolidayRule> {
-    // Taiwan Stock Exchange: tabulated Lunar NY (5-7 day closure), Children's
-    // Day (Apr 4), Tomb Sweeping (Apr 5), Dragon Boat, Mid-Autumn, ROC
-    // National (Oct 10).
-    let lny: &'static [(i32, u32, u32)] = &[
-        (2020, 1, 23),
-        (2021, 2, 8),
-        (2022, 1, 27),
-        (2023, 1, 19),
-        (2024, 2, 5),
-        (2025, 1, 23),
-        (2026, 2, 13),
-    ];
+    // Taiwan Stock Exchange. Computable anchors: New Year, the Lunar New Year
+    // core (eve through the third day), Peace Memorial Day, Children's Day, Tomb
+    // Sweeping (Qingming), Labour Day, Dragon Boat, Mid-Autumn and ROC National
+    // Day. The Lunar New Year span extensions, "bridge" days and make-up working
+    // days are set annually by the DGPA and are tabulated; typhoon closures too.
     vec![
-        fixed(1, 1, None),
-        HolidayRule::Tabulated { table: lny },
-        fixed_no_roll(2, 28, None), // Peace Memorial
-        fixed_no_roll(4, 4, None),  // Children's
-        fixed_no_roll(4, 5, None),  // Tomb Sweeping
-        fixed(5, 1, None),
-        fixed_no_roll(10, 10, None), // ROC National
+        fixed_no_roll(1, 1, None),
+        lunar(1, 1, -1), // Lunar New Year eve
+        lunar(1, 1, 0),
+        lunar(1, 1, 1),
+        lunar(1, 1, 2),
+        fixed_no_roll(2, 28, None),  // Peace Memorial Day
+        fixed_no_roll(4, 4, None),   // Children's Day
+        qingming(),                  // Tomb Sweeping Day
+        fixed_no_roll(5, 1, None),   // Labour Day
+        lunar(5, 5, 0),              // Dragon Boat
+        lunar(8, 15, 0),             // Mid-Autumn
+        fixed_no_roll(10, 10, None), // ROC National Day
+        HolidayRule::Tabulated {
+            table: XTAI_ONE_OFFS,
+        },
     ]
 }
+
+/// Taiwan Lunar New Year span extensions, bridge/make-up days (annual DGPA
+/// arrangements) and typhoon closures, curated from the official TWSE calendar.
+static XTAI_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 2, 16),
+    (2015, 2, 17),
+    (2015, 2, 23),
+    (2015, 2, 27),
+    (2015, 4, 3),
+    (2015, 4, 6),
+    (2015, 6, 19),
+    (2015, 7, 10),
+    (2015, 9, 28),
+    (2015, 9, 29),
+    (2015, 10, 9),
+    (2016, 2, 4),
+    (2016, 2, 5),
+    (2016, 2, 11),
+    (2016, 2, 12),
+    (2016, 2, 29),
+    (2016, 4, 5),
+    (2016, 5, 2),
+    (2016, 6, 10),
+    (2016, 7, 8),
+    (2016, 9, 16),
+    (2016, 9, 27),
+    (2016, 9, 28),
+    (2017, 1, 2),
+    (2017, 1, 25),
+    (2017, 1, 26),
+    (2017, 1, 31),
+    (2017, 2, 1),
+    (2017, 2, 27),
+    (2017, 4, 3),
+    (2017, 5, 29),
+    (2017, 10, 9),
+    (2018, 2, 13),
+    (2018, 2, 14),
+    (2018, 2, 19),
+    (2018, 2, 20),
+    (2018, 4, 6),
+    (2018, 12, 31),
+    (2019, 1, 31),
+    (2019, 2, 1),
+    (2019, 2, 8),
+    (2019, 3, 1),
+    (2019, 8, 9),
+    (2019, 9, 30),
+    (2019, 10, 11),
+    (2020, 1, 21),
+    (2020, 1, 22),
+    (2020, 1, 23),
+    (2020, 1, 28),
+    (2020, 1, 29),
+    (2020, 4, 2),
+    (2020, 4, 3),
+    (2020, 6, 26),
+    (2020, 10, 2),
+    (2020, 10, 9),
+    (2021, 2, 8),
+    (2021, 2, 9),
+    (2021, 2, 10),
+    (2021, 2, 15),
+    (2021, 2, 16),
+    (2021, 3, 1),
+    (2021, 4, 2),
+    (2021, 4, 5),
+    (2021, 4, 30),
+    (2021, 9, 20),
+    (2021, 10, 11),
+    (2021, 12, 31),
+    (2022, 1, 27),
+    (2022, 1, 28),
+    (2022, 5, 2),
+    (2022, 9, 9),
+    (2023, 1, 2),
+    (2023, 1, 19),
+    (2023, 1, 20),
+    (2023, 1, 25),
+    (2023, 1, 26),
+    (2023, 1, 27),
+    (2023, 2, 27),
+    (2023, 4, 3),
+    (2023, 6, 23),
+    (2023, 8, 3),
+    (2023, 10, 9),
+    (2024, 2, 6),
+    (2024, 2, 7),
+    (2024, 2, 8),
+    (2024, 2, 13),
+    (2024, 2, 14),
+    (2024, 4, 5),
+    (2024, 7, 24),
+    (2024, 7, 25),
+    (2024, 10, 2),
+    (2024, 10, 3),
+    (2025, 1, 23),
+    (2025, 1, 24),
+    (2025, 1, 27),
+    (2025, 4, 3),
+    (2025, 5, 30),
+    (2025, 9, 29),
+    (2025, 10, 24),
+    (2025, 12, 25),
+    (2026, 2, 12),
+    (2026, 2, 13),
+    (2026, 2, 20),
+    (2026, 2, 27),
+    (2026, 4, 3),
+    (2026, 4, 6),
+    (2026, 9, 28),
+    (2026, 10, 9),
+    (2026, 10, 26),
+    (2026, 12, 25),
+    (2027, 2, 4),
+    (2027, 2, 9),
+    (2027, 2, 10),
+    (2027, 3, 1),
+    (2027, 4, 30),
+    (2027, 9, 28),
+    (2027, 10, 11),
+    (2027, 10, 25),
+    (2027, 12, 31),
+    (2028, 1, 24),
+    (2028, 4, 3),
+    (2028, 5, 29),
+    (2028, 9, 28),
+    (2028, 10, 25),
+    (2028, 12, 25),
+    (2029, 2, 9),
+    (2029, 4, 3),
+    (2029, 6, 15),
+    (2029, 9, 21),
+    (2029, 9, 28),
+    (2029, 10, 25),
+    (2029, 12, 25),
+    (2029, 12, 31),
+    (2030, 1, 31),
+    (2030, 2, 1),
+    (2030, 2, 6),
+    (2030, 9, 27),
+    (2030, 10, 25),
+    (2030, 12, 25),
+];
 
 fn xtai_hours() -> TradingHours {
     TradingHours::new(
@@ -1669,8 +2706,157 @@ fn xbkk_rules() -> Vec<HolidayRule> {
         fixed(12, 5, None),
         fixed(12, 10, None),
         fixed_no_roll(12, 31, None),
+        HolidayRule::Tabulated { table: XBKK_ADDS },
     ]
 }
+
+/// Thailand: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XBKK_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 3, 4),
+    (2015, 5, 5),
+    (2015, 6, 1),
+    (2015, 7, 1),
+    (2015, 7, 30),
+    (2015, 12, 7),
+    (2016, 2, 22),
+    (2016, 5, 5),
+    (2016, 5, 6),
+    (2016, 5, 20),
+    (2016, 7, 1),
+    (2016, 7, 18),
+    (2016, 7, 19),
+    (2016, 12, 12),
+    (2017, 1, 3),
+    (2017, 2, 13),
+    (2017, 5, 10),
+    (2017, 7, 10),
+    (2017, 7, 28),
+    (2017, 8, 14),
+    (2017, 10, 26),
+    (2018, 1, 2),
+    (2018, 3, 1),
+    (2018, 4, 16),
+    (2018, 5, 29),
+    (2018, 7, 27),
+    (2018, 7, 30),
+    (2018, 8, 13),
+    (2018, 10, 15),
+    (2019, 2, 19),
+    (2019, 4, 8),
+    (2019, 4, 16),
+    (2019, 5, 6),
+    (2019, 5, 20),
+    (2019, 6, 3),
+    (2019, 7, 16),
+    (2019, 7, 29),
+    (2020, 2, 10),
+    (2020, 5, 6),
+    (2020, 6, 3),
+    (2020, 7, 6),
+    (2020, 7, 28),
+    (2020, 12, 7),
+    (2021, 2, 12),
+    (2021, 2, 26),
+    (2021, 5, 3),
+    (2021, 5, 26),
+    (2021, 6, 3),
+    (2021, 7, 26),
+    (2021, 7, 28),
+    (2021, 9, 24),
+    (2021, 10, 25),
+    (2022, 1, 3),
+    (2022, 2, 16),
+    (2022, 5, 16),
+    (2022, 6, 3),
+    (2022, 7, 13),
+    (2022, 7, 28),
+    (2022, 7, 29),
+    (2022, 10, 14),
+    (2022, 12, 12),
+    (2023, 1, 3),
+    (2023, 3, 6),
+    (2023, 5, 5),
+    (2023, 6, 5),
+    (2023, 7, 28),
+    (2023, 8, 1),
+    (2023, 8, 14),
+    (2023, 12, 29),
+    (2024, 1, 2),
+    (2024, 2, 26),
+    (2024, 4, 8),
+    (2024, 4, 12),
+    (2024, 4, 16),
+    (2024, 5, 6),
+    (2024, 5, 22),
+    (2024, 6, 3),
+    (2024, 7, 22),
+    (2024, 7, 29),
+    (2025, 2, 12),
+    (2025, 5, 5),
+    (2025, 5, 12),
+    (2025, 6, 2),
+    (2025, 6, 3),
+    (2025, 7, 10),
+    (2025, 7, 28),
+    (2025, 8, 11),
+    (2026, 1, 2),
+    (2026, 3, 3),
+    (2026, 6, 1),
+    (2026, 6, 3),
+    (2026, 7, 28),
+    (2026, 7, 29),
+    (2026, 12, 7),
+    (2027, 2, 22),
+    (2027, 5, 3),
+    (2027, 5, 20),
+    (2027, 6, 3),
+    (2027, 7, 19),
+    (2027, 7, 28),
+    (2027, 10, 25),
+    (2028, 1, 3),
+    (2028, 2, 10),
+    (2028, 5, 8),
+    (2028, 6, 5),
+    (2028, 7, 6),
+    (2028, 7, 28),
+    (2028, 8, 14),
+    (2029, 1, 2),
+    (2029, 2, 27),
+    (2029, 4, 16),
+    (2029, 5, 28),
+    (2029, 6, 4),
+    (2029, 7, 25),
+    (2029, 7, 30),
+    (2029, 8, 13),
+    (2029, 10, 15),
+    (2030, 4, 8),
+    (2030, 4, 16),
+    (2030, 5, 6),
+    (2030, 6, 3),
+    (2030, 7, 29),
+];
+static XBKK_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 10, 13),
+    (2015, 12, 4),
+    (2016, 5, 4),
+    (2016, 10, 13),
+    (2016, 12, 9),
+    (2017, 5, 4),
+    (2018, 5, 4),
+    (2018, 10, 12),
+    (2019, 4, 5),
+    (2020, 12, 4),
+    (2021, 4, 30),
+    (2022, 12, 9),
+    (2024, 4, 5),
+    (2026, 12, 4),
+    (2027, 4, 30),
+    (2027, 10, 22),
+    (2029, 10, 12),
+    (2030, 4, 5),
+];
 
 fn xbkk_hours() -> TradingHours {
     TradingHours::new(
@@ -1701,8 +2887,189 @@ fn xkls_rules() -> Vec<HolidayRule> {
         fixed(8, 31, None),
         fixed(9, 16, None),
         fixed(12, 25, None),
+        HolidayRule::Tabulated { table: XKLS_ADDS },
     ]
 }
+
+/// Bursa Malaysia: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XKLS_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 2, 2),
+    (2015, 2, 3),
+    (2015, 2, 19),
+    (2015, 2, 20),
+    (2015, 5, 4),
+    (2015, 7, 17),
+    (2015, 9, 24),
+    (2015, 10, 14),
+    (2015, 11, 10),
+    (2015, 12, 24),
+    (2016, 1, 25),
+    (2016, 2, 1),
+    (2016, 2, 8),
+    (2016, 2, 9),
+    (2016, 6, 22),
+    (2016, 7, 6),
+    (2016, 7, 7),
+    (2016, 9, 12),
+    (2016, 10, 3),
+    (2016, 12, 12),
+    (2017, 1, 30),
+    (2017, 2, 1),
+    (2017, 2, 9),
+    (2017, 4, 24),
+    (2017, 5, 10),
+    (2017, 6, 12),
+    (2017, 6, 26),
+    (2017, 6, 27),
+    (2017, 9, 1),
+    (2017, 9, 4),
+    (2017, 9, 22),
+    (2017, 10, 18),
+    (2017, 12, 1),
+    (2018, 1, 31),
+    (2018, 2, 1),
+    (2018, 2, 16),
+    (2018, 5, 9),
+    (2018, 5, 10),
+    (2018, 5, 11),
+    (2018, 5, 29),
+    (2018, 6, 15),
+    (2018, 8, 22),
+    (2018, 9, 10),
+    (2018, 9, 11),
+    (2018, 11, 6),
+    (2018, 11, 20),
+    (2019, 1, 21),
+    (2019, 2, 1),
+    (2019, 2, 5),
+    (2019, 2, 6),
+    (2019, 5, 20),
+    (2019, 5, 22),
+    (2019, 6, 5),
+    (2019, 6, 6),
+    (2019, 7, 30),
+    (2019, 8, 12),
+    (2019, 9, 2),
+    (2019, 9, 9),
+    (2019, 10, 28),
+    (2020, 5, 7),
+    (2020, 5, 11),
+    (2020, 5, 25),
+    (2020, 5, 26),
+    (2020, 6, 8),
+    (2020, 7, 31),
+    (2020, 8, 20),
+    (2020, 10, 29),
+    (2021, 1, 28),
+    (2021, 2, 1),
+    (2021, 4, 29),
+    (2021, 5, 13),
+    (2021, 5, 14),
+    (2021, 5, 26),
+    (2021, 7, 20),
+    (2021, 8, 10),
+    (2021, 10, 19),
+    (2021, 11, 4),
+    (2022, 1, 18),
+    (2022, 2, 2),
+    (2022, 4, 19),
+    (2022, 5, 3),
+    (2022, 5, 4),
+    (2022, 7, 11),
+    (2022, 10, 10),
+    (2022, 10, 24),
+    (2023, 1, 24),
+    (2023, 2, 1),
+    (2023, 4, 21),
+    (2023, 4, 24),
+    (2023, 5, 4),
+    (2023, 6, 29),
+    (2023, 7, 19),
+    (2023, 9, 28),
+    (2023, 11, 13),
+    (2024, 1, 25),
+    (2024, 2, 1),
+    (2024, 3, 27),
+    (2024, 4, 10),
+    (2024, 4, 11),
+    (2024, 5, 22),
+    (2024, 6, 17),
+    (2024, 7, 8),
+    (2024, 10, 31),
+    (2025, 1, 30),
+    (2025, 2, 11),
+    (2025, 3, 18),
+    (2025, 3, 31),
+    (2025, 4, 1),
+    (2025, 5, 12),
+    (2025, 6, 27),
+    (2025, 9, 5),
+    (2025, 10, 20),
+    (2026, 2, 2),
+    (2026, 2, 18),
+    (2026, 3, 23),
+    (2026, 5, 27),
+    (2026, 6, 17),
+    (2026, 8, 25),
+    (2026, 11, 9),
+    (2027, 1, 22),
+    (2027, 2, 1),
+    (2027, 2, 8),
+    (2027, 2, 24),
+    (2027, 3, 9),
+    (2027, 3, 10),
+    (2027, 5, 17),
+    (2027, 5, 20),
+    (2027, 10, 28),
+    (2028, 1, 26),
+    (2028, 1, 27),
+    (2028, 2, 1),
+    (2028, 2, 9),
+    (2028, 2, 14),
+    (2028, 2, 28),
+    (2028, 5, 5),
+    (2028, 5, 9),
+    (2028, 5, 25),
+    (2028, 8, 3),
+    (2028, 10, 17),
+    (2029, 1, 30),
+    (2029, 2, 1),
+    (2029, 2, 13),
+    (2029, 2, 14),
+    (2029, 2, 15),
+    (2029, 4, 24),
+    (2029, 5, 14),
+    (2029, 5, 28),
+    (2029, 7, 24),
+    (2029, 11, 5),
+    (2030, 1, 21),
+    (2030, 2, 1),
+    (2030, 2, 4),
+    (2030, 2, 5),
+    (2030, 5, 3),
+];
+static XKLS_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 6, 1),
+    (2016, 6, 6),
+    (2017, 6, 5),
+    (2017, 9, 15),
+    (2018, 6, 4),
+    (2019, 6, 3),
+    (2019, 8, 30),
+    (2020, 6, 1),
+    (2021, 4, 30),
+    (2021, 12, 24),
+    (2023, 9, 15),
+    (2024, 8, 30),
+    (2027, 4, 30),
+    (2027, 12, 24),
+    (2028, 6, 5),
+    (2028, 9, 15),
+    (2029, 6, 4),
+    (2030, 6, 3),
+    (2030, 8, 30),
+];
 
 fn xkls_hours() -> TradingHours {
     TradingHours::new(
@@ -1731,8 +3098,209 @@ fn xidx_rules() -> Vec<HolidayRule> {
         fixed(6, 1, None),
         fixed(8, 17, None),
         fixed(12, 25, None),
+        HolidayRule::Tabulated { table: XIDX_ADDS },
     ]
 }
+
+/// Indonesia: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XIDX_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 2, 19),
+    (2015, 4, 3),
+    (2015, 5, 14),
+    (2015, 6, 2),
+    (2015, 7, 16),
+    (2015, 7, 17),
+    (2015, 7, 20),
+    (2015, 7, 21),
+    (2015, 9, 24),
+    (2015, 10, 14),
+    (2015, 12, 9),
+    (2015, 12, 24),
+    (2015, 12, 31),
+    (2016, 2, 8),
+    (2016, 3, 9),
+    (2016, 3, 25),
+    (2016, 5, 5),
+    (2016, 5, 6),
+    (2016, 7, 4),
+    (2016, 7, 5),
+    (2016, 7, 6),
+    (2016, 7, 7),
+    (2016, 7, 8),
+    (2016, 9, 12),
+    (2016, 12, 12),
+    (2017, 2, 15),
+    (2017, 3, 28),
+    (2017, 4, 14),
+    (2017, 4, 19),
+    (2017, 4, 24),
+    (2017, 5, 11),
+    (2017, 5, 25),
+    (2017, 6, 23),
+    (2017, 6, 26),
+    (2017, 6, 27),
+    (2017, 6, 28),
+    (2017, 6, 29),
+    (2017, 6, 30),
+    (2017, 9, 1),
+    (2017, 9, 21),
+    (2017, 12, 1),
+    (2017, 12, 26),
+    (2018, 2, 16),
+    (2018, 3, 30),
+    (2018, 5, 10),
+    (2018, 5, 29),
+    (2018, 6, 11),
+    (2018, 6, 12),
+    (2018, 6, 13),
+    (2018, 6, 14),
+    (2018, 6, 15),
+    (2018, 6, 18),
+    (2018, 6, 19),
+    (2018, 8, 22),
+    (2018, 9, 11),
+    (2018, 11, 20),
+    (2018, 12, 24),
+    (2018, 12, 31),
+    (2019, 2, 5),
+    (2019, 3, 7),
+    (2019, 4, 3),
+    (2019, 4, 17),
+    (2019, 4, 19),
+    (2019, 5, 30),
+    (2019, 6, 3),
+    (2019, 6, 4),
+    (2019, 6, 5),
+    (2019, 6, 6),
+    (2019, 6, 7),
+    (2019, 12, 24),
+    (2019, 12, 31),
+    (2020, 3, 25),
+    (2020, 4, 10),
+    (2020, 5, 7),
+    (2020, 5, 21),
+    (2020, 5, 22),
+    (2020, 5, 25),
+    (2020, 7, 31),
+    (2020, 8, 20),
+    (2020, 8, 21),
+    (2020, 10, 28),
+    (2020, 10, 29),
+    (2020, 10, 30),
+    (2020, 12, 9),
+    (2020, 12, 24),
+    (2020, 12, 31),
+    (2021, 3, 11),
+    (2021, 4, 2),
+    (2021, 5, 12),
+    (2021, 5, 13),
+    (2021, 5, 14),
+    (2021, 5, 26),
+    (2021, 7, 20),
+    (2021, 8, 11),
+    (2021, 10, 20),
+    (2021, 12, 31),
+    (2022, 2, 28),
+    (2022, 3, 3),
+    (2022, 4, 15),
+    (2022, 5, 3),
+    (2022, 5, 16),
+    (2022, 5, 26),
+    (2023, 3, 22),
+    (2023, 3, 23),
+    (2023, 4, 7),
+    (2023, 4, 19),
+    (2023, 4, 20),
+    (2023, 4, 21),
+    (2023, 4, 24),
+    (2023, 4, 25),
+    (2023, 5, 18),
+    (2023, 6, 2),
+    (2023, 6, 28),
+    (2023, 6, 29),
+    (2023, 6, 30),
+    (2023, 7, 19),
+    (2023, 9, 28),
+    (2023, 12, 26),
+    (2024, 2, 9),
+    (2024, 2, 14),
+    (2024, 3, 11),
+    (2024, 3, 12),
+    (2024, 3, 29),
+    (2024, 4, 8),
+    (2024, 4, 9),
+    (2024, 4, 10),
+    (2024, 4, 11),
+    (2024, 4, 12),
+    (2024, 4, 15),
+    (2024, 5, 9),
+    (2024, 5, 10),
+    (2024, 5, 23),
+    (2024, 5, 24),
+    (2024, 6, 17),
+    (2024, 6, 18),
+    (2024, 9, 16),
+    (2024, 11, 27),
+    (2024, 12, 26),
+    (2024, 12, 31),
+    (2025, 1, 27),
+    (2025, 1, 28),
+    (2025, 3, 28),
+    (2025, 3, 31),
+    (2025, 4, 1),
+    (2025, 4, 2),
+    (2025, 4, 3),
+    (2025, 4, 4),
+    (2025, 4, 7),
+    (2025, 4, 18),
+    (2025, 5, 12),
+    (2025, 5, 13),
+    (2025, 5, 29),
+    (2025, 5, 30),
+    (2025, 6, 6),
+    (2025, 6, 9),
+    (2025, 6, 27),
+    (2025, 9, 5),
+    (2025, 12, 26),
+    (2025, 12, 31),
+    (2026, 4, 3),
+    (2026, 5, 14),
+    (2026, 12, 31),
+    (2027, 3, 26),
+    (2027, 5, 6),
+    (2027, 12, 31),
+    (2028, 1, 26),
+    (2028, 4, 14),
+    (2028, 5, 25),
+    (2029, 2, 13),
+    (2029, 3, 30),
+    (2029, 5, 10),
+    (2029, 12, 31),
+    (2030, 4, 19),
+    (2030, 5, 30),
+    (2030, 12, 31),
+];
+static XIDX_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 6, 1),
+    (2016, 5, 2),
+    (2016, 6, 1),
+    (2019, 5, 31),
+    (2019, 8, 16),
+    (2020, 1, 27),
+    (2021, 4, 30),
+    (2021, 12, 24),
+    (2022, 12, 26),
+    (2023, 1, 2),
+    (2024, 5, 31),
+    (2024, 8, 16),
+    (2025, 6, 2),
+    (2025, 8, 18),
+    (2027, 4, 30),
+    (2027, 12, 24),
+    (2030, 5, 31),
+    (2030, 8, 16),
+];
 
 fn xidx_hours() -> TradingHours {
     TradingHours::new(
@@ -1772,24 +3340,42 @@ fn xphs_hours() -> TradingHours {
     )
 }
 
+/// Matariki (NZ public holiday since 2022) — official government-announced
+/// dates; not derivable from a simple rule.
+static NZ_MATARIKI: &[(i32, u32, u32)] = &[
+    (2022, 6, 24),
+    (2023, 7, 14),
+    (2024, 6, 28),
+    (2025, 6, 20),
+    (2026, 7, 10),
+    (2027, 6, 25),
+    (2028, 7, 14),
+    (2029, 7, 6),
+    (2030, 6, 21),
+    (2031, 7, 11),
+    (2032, 7, 2),
+    (2033, 6, 24),
+    (2034, 7, 14),
+    (2035, 7, 6),
+];
+
 fn xnze_rules() -> Vec<HolidayRule> {
-    // NZX (New Zealand): NY (Jan 1, Jan 2 observed), Waitangi (Feb 6),
-    // Good Fri, Easter Mon, ANZAC (Apr 25), King's Birthday (1st Mon Jun),
-    // Matariki (variable, skipped here), Labour Day (4th Mon Oct),
-    // Christmas, Boxing Day.
     vec![
-        fixed(1, 1, None),
-        fixed(1, 2, None),
-        fixed(2, 6, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 25, None),
-        nth(6, Weekday::Mon, 1),
-        nth(10, Weekday::Mon, 4),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        consecutive_pair(1, 1, WeekendRoll::ForwardMonday), // New Year + day after
+        fixed_fwd(2, 6, None),                              // Waitangi Day (mondayised)
+        easter(-2),                                         // Good Friday
+        easter(1),                                          // Easter Monday
+        fixed_fwd(4, 25, None),                             // ANZAC Day (mondayised)
+        nth(6, Weekday::Mon, 1),                            // King's Birthday (1st Mon Jun)
+        nth(10, Weekday::Mon, 4),                           // Labour Day (4th Mon Oct)
+        christmas_boxing(),                                 // Christmas + Boxing
+        HolidayRule::Tabulated { table: NZ_MATARIKI },
+        HolidayRule::Tabulated { table: NZ_ONE_OFFS },
     ]
 }
+
+/// One-off NZX closure: national day of mourning for Queen Elizabeth II.
+static NZ_ONE_OFFS: &[(i32, u32, u32)] = &[(2022, 9, 26)];
 
 fn xnze_hours() -> TradingHours {
     TradingHours::new(
@@ -1806,21 +3392,37 @@ fn xjse_rules() -> Vec<HolidayRule> {
     // Mon), Freedom (Apr 27), Workers (May 1), Youth (Jun 16), National
     // Women's (Aug 9), Heritage (Sep 24), Day of Reconciliation (Dec 16),
     // Christmas, Day of Goodwill (Dec 26).
+    // South African public holidays substitute only Sunday → Monday (Saturday
+    // holidays are lost). Christmas and Day of Goodwill are independent Sunday-
+    // rolled dates; there is no automatic cascade when a substitute collides
+    // with the next holiday (extra days require a special proclamation, tabulated
+    // below as one-offs).
     vec![
-        fixed(1, 1, None),
-        fixed(3, 21, None),
-        easter(-2),
-        easter(1),
-        fixed(4, 27, None),
-        fixed(5, 1, None),
-        fixed(6, 16, None),
-        fixed(8, 9, None),
-        fixed(9, 24, None),
-        fixed(12, 16, None),
-        fixed(12, 25, None),
-        fixed(12, 26, None),
+        fixed_sun(1, 1, None),   // New Year
+        fixed_sun(3, 21, None),  // Human Rights Day
+        easter(-2),              // Good Friday
+        easter(1),               // Family Day (Easter Monday)
+        fixed_sun(4, 27, None),  // Freedom Day
+        fixed_sun(5, 1, None),   // Workers' Day
+        fixed_sun(6, 16, None),  // Youth Day
+        fixed_sun(8, 9, None),   // National Women's Day
+        fixed_sun(9, 24, None),  // Heritage Day
+        fixed_sun(12, 16, None), // Day of Reconciliation
+        fixed_sun(12, 25, None), // Christmas
+        fixed_sun(12, 26, None), // Day of Goodwill
+        HolidayRule::Tabulated {
+            table: XJSE_ONE_OFFS,
+        },
     ]
 }
+
+/// One-off JSE closures declared by special proclamation (elections; extra
+/// festive-season day when Christmas fell on a Sunday in 2016).
+static XJSE_ONE_OFFS: &[(i32, u32, u32)] = &[
+    (2016, 8, 3),   // Municipal elections
+    (2016, 12, 27), // Proclaimed festive-season public holiday
+    (2019, 5, 8),   // National elections
+];
 
 fn xjse_hours() -> TradingHours {
     TradingHours::new(
@@ -1859,8 +3461,104 @@ fn xsau_rules() -> Vec<HolidayRule> {
         fixed_no_roll(9, 23, None),
         HolidayRule::Tabulated { table: eid_fitr },
         HolidayRule::Tabulated { table: eid_adha },
+        HolidayRule::Tabulated { table: XSAU_ADDS },
     ]
 }
+
+/// Saudi (Tadawul): Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XSAU_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 2, 22),
+    (2016, 2, 22),
+    (2017, 2, 22),
+    (2018, 2, 22),
+    (2021, 2, 22),
+    (2021, 5, 16),
+    (2021, 7, 18),
+    (2021, 7, 19),
+    (2021, 7, 21),
+    (2021, 7, 22),
+    (2022, 4, 28),
+    (2022, 5, 1),
+    (2022, 5, 3),
+    (2022, 5, 4),
+    (2022, 5, 5),
+    (2022, 5, 8),
+    (2022, 7, 7),
+    (2022, 7, 10),
+    (2022, 7, 11),
+    (2022, 7, 12),
+    (2022, 7, 13),
+    (2023, 4, 18),
+    (2023, 4, 19),
+    (2023, 4, 20),
+    (2023, 4, 23),
+    (2023, 4, 24),
+    (2023, 4, 25),
+    (2023, 6, 27),
+    (2023, 6, 29),
+    (2023, 7, 2),
+    (2024, 4, 7),
+    (2024, 4, 8),
+    (2024, 4, 9),
+    (2024, 4, 11),
+    (2024, 4, 14),
+    (2024, 4, 15),
+    (2024, 6, 13),
+    (2024, 6, 17),
+    (2024, 6, 18),
+    (2024, 6, 19),
+    (2024, 6, 20),
+    (2024, 6, 23),
+    (2025, 3, 27),
+    (2025, 3, 31),
+    (2025, 4, 1),
+    (2025, 4, 2),
+    (2025, 6, 4),
+    (2025, 6, 5),
+    (2025, 6, 8),
+    (2025, 6, 9),
+    (2026, 3, 17),
+    (2026, 3, 18),
+    (2026, 3, 19),
+    (2026, 3, 22),
+    (2026, 3, 23),
+    (2026, 5, 24),
+    (2026, 5, 25),
+    (2026, 5, 26),
+    (2026, 5, 28),
+    (2027, 3, 7),
+    (2027, 3, 8),
+    (2027, 3, 9),
+    (2027, 3, 10),
+    (2027, 3, 11),
+    (2027, 5, 16),
+    (2027, 5, 17),
+    (2027, 5, 18),
+    (2027, 5, 19),
+    (2027, 5, 20),
+    (2028, 2, 27),
+    (2028, 2, 28),
+    (2028, 2, 29),
+    (2028, 3, 1),
+    (2028, 3, 2),
+    (2028, 5, 3),
+    (2028, 5, 4),
+    (2028, 5, 7),
+    (2028, 5, 8),
+    (2028, 5, 9),
+    (2029, 2, 12),
+    (2029, 2, 13),
+    (2029, 2, 14),
+    (2029, 2, 15),
+    (2029, 2, 18),
+    (2029, 4, 22),
+    (2029, 4, 23),
+    (2029, 4, 24),
+    (2029, 4, 25),
+    (2029, 4, 26),
+];
+static XSAU_SKIP: &[(i32, u32, u32)] = &[(2020, 5, 24)];
 
 fn xsau_hours() -> TradingHours {
     TradingHours::new(
@@ -1902,8 +3600,120 @@ fn xist_rules() -> Vec<HolidayRule> {
         fixed(10, 29, None),
         HolidayRule::Tabulated { table: eid_fitr },
         HolidayRule::Tabulated { table: eid_adha },
+        HolidayRule::Tabulated { table: XIST_ADDS },
     ]
 }
+
+/// Istanbul: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XIST_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 7, 17),
+    (2015, 9, 24),
+    (2015, 9, 25),
+    (2016, 7, 5),
+    (2016, 7, 6),
+    (2016, 7, 7),
+    (2016, 9, 12),
+    (2016, 9, 13),
+    (2016, 9, 14),
+    (2016, 9, 15),
+    (2017, 6, 26),
+    (2017, 6, 27),
+    (2017, 9, 1),
+    (2017, 9, 4),
+    (2018, 6, 15),
+    (2018, 8, 21),
+    (2018, 8, 22),
+    (2018, 8, 23),
+    (2018, 8, 24),
+    (2019, 6, 4),
+    (2019, 6, 5),
+    (2019, 6, 6),
+    (2019, 8, 12),
+    (2019, 8, 13),
+    (2019, 8, 14),
+    (2020, 5, 25),
+    (2020, 5, 26),
+    (2020, 8, 3),
+    (2021, 5, 14),
+    (2021, 7, 21),
+    (2021, 7, 22),
+    (2021, 7, 23),
+    (2022, 5, 3),
+    (2022, 5, 4),
+    (2022, 7, 11),
+    (2022, 7, 12),
+    (2023, 2, 8),
+    (2023, 2, 9),
+    (2023, 2, 10),
+    (2023, 2, 13),
+    (2023, 2, 14),
+    (2023, 6, 29),
+    (2023, 6, 30),
+    (2024, 4, 11),
+    (2024, 4, 12),
+    (2024, 6, 17),
+    (2024, 6, 18),
+    (2024, 6, 19),
+    (2025, 3, 31),
+    (2025, 4, 1),
+    (2025, 6, 9),
+    (2026, 5, 28),
+    (2026, 5, 29),
+    (2027, 3, 9),
+    (2027, 3, 10),
+    (2027, 3, 11),
+    (2027, 5, 17),
+    (2027, 5, 18),
+    (2028, 2, 28),
+    (2028, 5, 5),
+    (2028, 5, 8),
+    (2029, 2, 14),
+    (2029, 2, 15),
+    (2029, 2, 16),
+    (2029, 4, 24),
+    (2029, 4, 25),
+    (2029, 4, 26),
+    (2029, 4, 27),
+    (2030, 2, 4),
+    (2030, 2, 5),
+    (2030, 2, 6),
+    (2030, 4, 15),
+    (2030, 4, 16),
+];
+static XIST_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 7, 15),
+    (2015, 8, 31),
+    (2016, 4, 22),
+    (2016, 5, 2),
+    (2016, 7, 15),
+    (2016, 10, 28),
+    (2017, 1, 2),
+    (2017, 4, 24),
+    (2017, 7, 14),
+    (2017, 10, 30),
+    (2018, 5, 18),
+    (2018, 7, 16),
+    (2019, 5, 20),
+    (2020, 8, 31),
+    (2021, 4, 30),
+    (2022, 4, 22),
+    (2022, 10, 28),
+    (2023, 1, 2),
+    (2023, 4, 24),
+    (2023, 7, 14),
+    (2023, 10, 30),
+    (2024, 5, 20),
+    (2025, 8, 29),
+    (2026, 8, 31),
+    (2027, 4, 30),
+    (2028, 4, 24),
+    (2028, 7, 14),
+    (2028, 10, 30),
+    (2029, 5, 18),
+    (2029, 7, 16),
+    (2030, 5, 20),
+];
 
 fn xist_hours() -> TradingHours {
     TradingHours::new(
@@ -1995,8 +3805,91 @@ fn xtae_rules() -> Vec<HolidayRule> {
         HolidayRule::Tabulated { table: rosh },
         HolidayRule::Tabulated { table: yom_kippur },
         HolidayRule::Tabulated { table: sukkot },
+        HolidayRule::Tabulated { table: XTAE_ADDS },
     ]
 }
+
+/// Tel Aviv: Islamic/festival closures and bridge days, curated from the
+/// official exchange calendar (2015-2030).
+static XTAE_ADDS: &[(i32, u32, u32)] = &[
+    (2019, 3, 21),
+    (2019, 4, 9),
+    (2019, 4, 25),
+    (2019, 5, 8),
+    (2019, 5, 9),
+    (2019, 6, 9),
+    (2019, 8, 11),
+    (2019, 9, 17),
+    (2019, 9, 29),
+    (2019, 9, 30),
+    (2019, 10, 1),
+    (2019, 10, 8),
+    (2019, 10, 9),
+    (2019, 10, 13),
+    (2019, 10, 14),
+    (2019, 10, 20),
+    (2019, 10, 21),
+    (2020, 3, 2),
+    (2020, 4, 9),
+    (2020, 4, 14),
+    (2020, 4, 15),
+    (2020, 4, 28),
+    (2020, 5, 28),
+    (2020, 7, 30),
+    (2020, 9, 20),
+    (2020, 9, 27),
+    (2021, 3, 28),
+    (2021, 4, 14),
+    (2021, 5, 16),
+    (2021, 7, 18),
+    (2021, 9, 6),
+    (2021, 9, 8),
+    (2021, 9, 15),
+    (2021, 9, 20),
+    (2021, 9, 27),
+    (2021, 9, 28),
+    (2022, 4, 21),
+    (2022, 8, 7),
+    (2022, 9, 25),
+    (2022, 9, 27),
+    (2022, 10, 4),
+    (2022, 10, 9),
+    (2022, 10, 16),
+    (2022, 10, 17),
+    (2022, 11, 1),
+    (2023, 3, 8),
+    (2023, 4, 6),
+    (2023, 4, 11),
+    (2023, 4, 12),
+    (2023, 4, 25),
+    (2023, 5, 25),
+    (2023, 7, 27),
+    (2023, 9, 17),
+    (2023, 9, 24),
+    (2023, 10, 31),
+    (2024, 3, 25),
+    (2024, 4, 23),
+    (2024, 4, 28),
+    (2024, 4, 29),
+    (2024, 5, 13),
+    (2024, 6, 11),
+    (2024, 8, 13),
+    (2024, 10, 2),
+    (2024, 10, 16),
+    (2024, 10, 23),
+    (2024, 10, 24),
+    (2025, 4, 13),
+    (2025, 4, 30),
+    (2025, 6, 1),
+    (2025, 8, 3),
+    (2025, 9, 22),
+    (2025, 9, 24),
+    (2025, 10, 1),
+    (2025, 10, 6),
+    (2025, 10, 13),
+    (2025, 10, 14),
+];
+static XTAE_SKIP: &[(i32, u32, u32)] = &[(2026, 3, 3), (2026, 4, 1), (2026, 4, 22), (2026, 9, 21)];
 
 fn xtae_hours() -> TradingHours {
     TradingHours::new(
@@ -2052,22 +3945,28 @@ fn bvmf_rules() -> Vec<HolidayRule> {
     // Good Friday, Tiradentes (Apr 21), Labour, Corpus Christi (+60),
     // Independence (Sep 7), Our Lady of Aparecida (Oct 12), All Souls (Nov 2),
     // Republic (Nov 15), Black Awareness (Nov 20), Christmas Eve, Christmas, NYE.
+    // B3 stopped observing São Paulo state/city holidays after 2021; Black
+    // Awareness Day became a national holiday in 2024. In 2020 the exchange did
+    // not close for the São Paulo holidays (see exceptions at construction).
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
+        fixed_between(1, 25, None, Some(2021)), // São Paulo city anniversary
         easter(-48),
         easter(-47),
         easter(-2),
-        fixed(4, 21, None),
-        fixed(5, 1, None),
+        fixed_no_roll(4, 21, None),
+        fixed_no_roll(5, 1, None),
         easter(60),
-        fixed(9, 7, None),
-        fixed(10, 12, None),
-        fixed(11, 2, None),
-        fixed(11, 15, None),
-        fixed(11, 20, Some(2024)),
+        fixed_between(7, 9, None, Some(2021)), // São Paulo Constitutionalist Revolution
+        fixed_no_roll(9, 7, None),
+        fixed_no_roll(10, 12, None),
+        fixed_no_roll(11, 2, None),
+        fixed_no_roll(11, 15, None),
+        fixed_between(11, 20, None, Some(2021)), // Black Awareness (São Paulo era)
+        fixed_no_roll(11, 20, Some(2024)),       // Black Awareness (national since 2024)
         fixed_no_roll(12, 24, None),
-        fixed(12, 25, None),
-        fixed_no_roll(12, 31, None),
+        fixed_no_roll(12, 25, None),
+        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -2082,17 +3981,19 @@ fn bvmf_hours() -> TradingHours {
 fn xmex_rules() -> Vec<HolidayRule> {
     // BMV Mexico: NY, Constitution (1st Mon Feb), Benito Juárez (3rd Mon Mar),
     // Maundy Thu, Good Fri, Labour, Independence (Sep 16), Revolution
-    // (3rd Mon Nov), Christmas.
+    // (3rd Mon Nov), Banxico holiday (Dec 12), Christmas.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         nth(2, Weekday::Mon, 1),
         nth(3, Weekday::Mon, 3),
         easter(-3),
         easter(-2),
-        fixed(5, 1, None),
-        fixed(9, 16, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(9, 16, None),
+        fixed_no_roll(11, 2, None), // All Souls' Day
         nth(11, Weekday::Mon, 3),
-        fixed(12, 25, None),
+        fixed_no_roll(12, 12, None),
+        fixed_no_roll(12, 25, None),
     ]
 }
 
@@ -2110,23 +4011,110 @@ fn xbue_rules() -> Vec<HolidayRule> {
     // Flag Day (Jun 20), Independence (Jul 9), San Martín (3rd Mon Aug),
     // Diversity (Oct 12), Sovereignty (Nov 20), Immaculate, Christmas.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-48),
         easter(-47),
-        fixed(3, 24, None),
-        fixed(4, 2, None),
+        fixed_no_roll(3, 24, None),
+        fixed_no_roll(4, 2, None),
         easter(-2),
-        fixed(5, 1, None),
-        fixed(5, 25, None),
-        fixed(6, 20, None),
-        fixed(7, 9, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(5, 25, None),
+        fixed_no_roll(6, 20, None),
+        fixed_no_roll(7, 9, None),
         nth(8, Weekday::Mon, 3),
-        fixed(10, 12, None),
-        fixed(11, 20, None),
-        fixed(12, 8, None),
-        fixed(12, 25, None),
+        fixed_no_roll(10, 12, None),
+        fixed_no_roll(11, 20, None),
+        fixed_no_roll(12, 8, None),
+        fixed_no_roll(12, 25, None),
+        HolidayRule::Tabulated { table: XBUE_ADDS },
     ]
 }
+
+/// Movable-holiday and bridge-day closures for Buenos Aires, curated from the
+/// official exchange calendar (2015-2030).
+static XBUE_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 3, 23),
+    (2015, 11, 6),
+    (2015, 11, 27),
+    (2015, 12, 7),
+    (2016, 6, 17),
+    (2016, 7, 8),
+    (2016, 10, 10),
+    (2016, 11, 28),
+    (2016, 12, 9),
+    (2017, 4, 13),
+    (2017, 10, 16),
+    (2017, 11, 6),
+    (2018, 3, 29),
+    (2018, 4, 30),
+    (2018, 10, 15),
+    (2018, 11, 19),
+    (2018, 11, 30),
+    (2018, 12, 24),
+    (2018, 12, 31),
+    (2019, 4, 18),
+    (2019, 6, 17),
+    (2019, 7, 8),
+    (2019, 10, 14),
+    (2019, 11, 18),
+    (2020, 4, 9),
+    (2020, 6, 17),
+    (2020, 11, 23),
+    (2021, 4, 1),
+    (2021, 6, 17),
+    (2021, 10, 11),
+    (2021, 11, 22),
+    (2022, 4, 14),
+    (2022, 6, 17),
+    (2022, 10, 10),
+    (2022, 11, 21),
+    (2023, 4, 6),
+    (2023, 10, 16),
+    (2024, 3, 28),
+    (2024, 6, 17),
+    (2024, 10, 14),
+    (2024, 11, 18),
+    (2025, 4, 17),
+    (2025, 6, 17),
+    (2025, 10, 13),
+    (2025, 11, 17),
+    (2026, 6, 17),
+    (2026, 11, 23),
+    (2027, 3, 25),
+    (2027, 6, 17),
+    (2027, 10, 11),
+    (2027, 11, 22),
+    (2028, 4, 13),
+    (2028, 10, 16),
+    (2029, 3, 29),
+    (2029, 10, 15),
+    (2029, 11, 19),
+    (2030, 4, 18),
+    (2030, 6, 17),
+    (2030, 10, 14),
+    (2030, 11, 18),
+];
+/// Dates the rules over-produce (movable holidays observed on another day).
+static XBUE_SKIP: &[(i32, u32, u32)] = &[
+    (2015, 11, 20),
+    (2016, 10, 12),
+    (2017, 10, 12),
+    (2018, 10, 12),
+    (2018, 11, 20),
+    (2019, 11, 20),
+    (2020, 11, 20),
+    (2021, 10, 12),
+    (2022, 10, 12),
+    (2023, 10, 12),
+    (2024, 11, 20),
+    (2025, 11, 20),
+    (2026, 11, 20),
+    (2027, 10, 12),
+    (2028, 10, 12),
+    (2029, 10, 12),
+    (2029, 11, 20),
+    (2030, 11, 20),
+];
 
 fn xbue_hours() -> TradingHours {
     TradingHours::new(
@@ -2142,23 +4130,107 @@ fn xsgo_rules() -> Vec<HolidayRule> {
     // Assumption, Independence (Sep 18-19), Columbus (Oct 12), Reformation
     // (Oct 31), All Saints, Immaculate, Christmas.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-2),
         easter(-1),
-        fixed(5, 1, None),
-        fixed(5, 21, None),
-        fixed(6, 29, None),
-        fixed(7, 16, None),
-        fixed(8, 15, None),
-        fixed(9, 18, None),
-        fixed(9, 19, None),
-        fixed(10, 12, None),
-        fixed(10, 31, None),
-        fixed(11, 1, None),
-        fixed(12, 8, None),
-        fixed(12, 25, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(5, 21, None),
+        fixed_no_roll(6, 29, None),
+        fixed_no_roll(7, 16, None),
+        fixed_no_roll(8, 15, None),
+        fixed_no_roll(9, 18, None),
+        fixed_no_roll(9, 19, None),
+        fixed_no_roll(10, 12, None),
+        fixed_no_roll(10, 31, None),
+        fixed_no_roll(11, 1, None),
+        fixed_no_roll(12, 8, None),
+        fixed_no_roll(12, 25, None),
+        HolidayRule::Tabulated { table: XSGO_ADDS },
     ]
 }
+
+/// Movable-holiday and bridge-day closures for Santiago, curated from the
+/// official exchange calendar (2015-2030).
+static XSGO_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 12, 31),
+    (2016, 6, 27),
+    (2016, 10, 10),
+    (2017, 1, 2),
+    (2017, 4, 19),
+    (2017, 6, 26),
+    (2017, 10, 9),
+    (2017, 10, 27),
+    (2018, 1, 16),
+    (2018, 7, 2),
+    (2018, 9, 17),
+    (2018, 10, 15),
+    (2018, 11, 2),
+    (2018, 12, 31),
+    (2019, 9, 20),
+    (2019, 12, 31),
+    (2020, 12, 31),
+    (2021, 6, 21),
+    (2021, 6, 28),
+    (2021, 10, 11),
+    (2021, 12, 31),
+    (2022, 6, 21),
+    (2022, 6, 27),
+    (2022, 9, 16),
+    (2022, 10, 10),
+    (2023, 6, 21),
+    (2023, 6, 26),
+    (2023, 10, 9),
+    (2023, 10, 27),
+    (2024, 6, 20),
+    (2024, 9, 20),
+    (2024, 12, 31),
+    (2025, 6, 20),
+    (2025, 12, 31),
+    (2026, 12, 31),
+    (2027, 6, 21),
+    (2027, 6, 28),
+    (2027, 10, 11),
+    (2027, 12, 31),
+    (2028, 6, 20),
+    (2028, 6, 26),
+    (2028, 10, 9),
+    (2028, 10, 27),
+    (2029, 6, 20),
+    (2029, 7, 2),
+    (2029, 9, 17),
+    (2029, 10, 15),
+    (2029, 11, 2),
+    (2029, 12, 31),
+    (2030, 6, 21),
+    (2030, 9, 20),
+    (2030, 12, 31),
+];
+/// Dates the rules over-produce (movable holidays observed on another day).
+static XSGO_SKIP: &[(i32, u32, u32)] = &[
+    (2016, 6, 29),
+    (2016, 10, 12),
+    (2017, 6, 29),
+    (2017, 10, 12),
+    (2017, 10, 31),
+    (2018, 6, 29),
+    (2018, 10, 12),
+    (2018, 10, 31),
+    (2021, 6, 29),
+    (2021, 10, 12),
+    (2022, 6, 29),
+    (2022, 10, 12),
+    (2023, 6, 29),
+    (2023, 10, 12),
+    (2023, 10, 31),
+    (2027, 6, 29),
+    (2027, 10, 12),
+    (2028, 6, 29),
+    (2028, 10, 12),
+    (2028, 10, 31),
+    (2029, 6, 29),
+    (2029, 10, 12),
+    (2029, 10, 31),
+];
 
 fn xsgo_hours() -> TradingHours {
     TradingHours::new(
@@ -2173,20 +4245,57 @@ fn xlim_rules() -> Vec<HolidayRule> {
     // & Paul, Independence (Jul 28-29), Santa Rosa (Aug 30), Battle of
     // Angamos (Oct 8), All Saints, Immaculate, Christmas.
     vec![
-        fixed(1, 1, None),
+        fixed_no_roll(1, 1, None),
         easter(-3),
         easter(-2),
-        fixed(5, 1, None),
-        fixed(6, 29, None),
-        fixed(7, 28, None),
-        fixed(7, 29, None),
-        fixed(8, 30, None),
-        fixed(10, 8, None),
-        fixed(11, 1, None),
-        fixed(12, 8, None),
-        fixed(12, 25, None),
+        fixed_no_roll(5, 1, None),
+        fixed_no_roll(6, 29, None),
+        fixed_no_roll(7, 28, None),
+        fixed_no_roll(7, 29, None),
+        fixed_no_roll(8, 30, None),
+        fixed_no_roll(10, 8, None),
+        fixed_no_roll(11, 1, None),
+        fixed_no_roll(12, 8, None),
+        fixed_no_roll(12, 25, None),
+        HolidayRule::Tabulated { table: XLIM_ADDS },
     ]
 }
+
+/// Movable-holiday and bridge-day closures for Lima, curated from the
+/// official exchange calendar (2015-2030).
+static XLIM_ADDS: &[(i32, u32, u32)] = &[
+    (2015, 1, 2),
+    (2015, 7, 27),
+    (2015, 10, 9),
+    (2016, 11, 17),
+    (2016, 11, 18),
+    (2018, 4, 13),
+    (2022, 12, 9),
+    (2024, 6, 7),
+    (2024, 7, 23),
+    (2024, 8, 6),
+    (2024, 12, 9),
+    (2025, 7, 23),
+    (2025, 8, 6),
+    (2025, 12, 9),
+    (2026, 7, 23),
+    (2026, 8, 6),
+    (2026, 12, 9),
+    (2027, 6, 7),
+    (2027, 7, 23),
+    (2027, 8, 6),
+    (2027, 12, 9),
+    (2028, 6, 7),
+    (2029, 6, 7),
+    (2029, 7, 23),
+    (2029, 8, 6),
+    (2030, 6, 7),
+    (2030, 7, 23),
+    (2030, 8, 6),
+    (2030, 12, 9),
+];
+/// Dates the rules over-produce (movable holidays observed on another day).
+static XLIM_SKIP: &[(i32, u32, u32)] = &[];
 
 fn xlim_hours() -> TradingHours {
     TradingHours::new(
@@ -2197,29 +4306,30 @@ fn xlim_hours() -> TradingHours {
 }
 
 fn xbog_rules() -> Vec<HolidayRule> {
-    // Bogotá Stock Exchange (BVC): NY, Epiphany, Saint Joseph, Maundy Thu,
-    // Good Fri, Labour, Ascension, Corpus Christi, Sacred Heart, Saint
-    // Peter & Paul, Independence (Jul 20), Battle of Boyacá (Aug 7),
-    // Assumption, Race Day (Oct 12), All Saints, Independence of Cartagena
-    // (Nov 11), Immaculate, Christmas.
+    // Bogotá (BVC). Many holidays follow the Emiliani law (observed the next
+    // Monday). The Easter-based movable feasts are pre-shifted to their observed
+    // Monday: Ascension = Easter+43, Corpus Christi = Easter+64, Sacred Heart =
+    // Easter+71.
     vec![
-        fixed(1, 1, None),
-        fixed(1, 6, None),
-        fixed(3, 19, None),
-        easter(-3),
-        easter(-2),
-        fixed(5, 1, None),
-        easter(39),
-        easter(60),
-        easter(68),
-        fixed(7, 20, None),
-        fixed(8, 7, None),
-        fixed(8, 15, None),
-        fixed(10, 12, None),
-        fixed(11, 1, None),
-        fixed(11, 11, None),
-        fixed(12, 8, None),
-        fixed(12, 25, None),
+        fixed_no_roll(1, 1, None),
+        emiliani(1, 6),              // Epiphany
+        emiliani(3, 19),             // Saint Joseph
+        easter(-3),                  // Maundy Thursday
+        easter(-2),                  // Good Friday
+        fixed_no_roll(5, 1, None),   // Labour Day
+        easter(43),                  // Ascension (observed Monday)
+        easter(64),                  // Corpus Christi (observed Monday)
+        easter(71),                  // Sacred Heart (observed Monday)
+        emiliani(6, 29),             // Saint Peter & Paul
+        fixed_no_roll(7, 20, None),  // Independence
+        fixed_no_roll(8, 7, None),   // Battle of Boyacá
+        emiliani(8, 15),             // Assumption
+        emiliani(10, 12),            // Race Day
+        emiliani(11, 1),             // All Saints
+        emiliani(11, 11),            // Independence of Cartagena
+        fixed_no_roll(12, 8, None),  // Immaculate Conception
+        fixed_no_roll(12, 25, None), // Christmas
+        fixed_prev_fri(12, 31),      // New Year's Eve (preceding Friday if weekend)
     ]
 }
 
@@ -2493,7 +4603,8 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             lse_rules(),
             Some(lse_trading_hours()),
-        ),
+        )
+        .with_exceptions(LSE_MOVED),
         Tse => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2501,14 +4612,17 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             tse_rules(),
             Some(tse_trading_hours()),
         )
-        .with_schedules(tse_schedules()),
+        .with_schedules(tse_schedules())
+        .with_exceptions(TSE_MOVED)
+        .with_adjustment(HolidayAdjustment::Japanese),
         Hkex => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             hkex_rules(),
             Some(hkex_trading_hours()),
-        ),
+        )
+        .with_adjustment(HolidayAdjustment::HongKong),
         Sse => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2578,7 +4692,8 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             nse_rules(),
             Some(nse_trading_hours()),
-        ),
+        )
+        .with_exceptions(NSE_SKIP),
         Xmil => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2676,7 +4791,8 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             xses_rules(),
             Some(xses_hours()),
-        ),
+        )
+        .with_exceptions(XSES_SKIP),
         Xtai => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2690,21 +4806,24 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             xbkk_rules(),
             Some(xbkk_hours()),
-        ),
+        )
+        .with_exceptions(XBKK_SKIP),
         Xkls => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             xkls_rules(),
             Some(xkls_hours()),
-        ),
+        )
+        .with_exceptions(XKLS_SKIP),
         Xidx => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             xidx_rules(),
             Some(xidx_hours()),
-        ),
+        )
+        .with_exceptions(XIDX_SKIP),
         Xphs => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2732,21 +4851,24 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             MIDEAST_WEEKMASK,
             xsau_rules(),
             Some(xsau_hours()),
-        ),
+        )
+        .with_exceptions(XSAU_SKIP),
         Xist => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             xist_rules(),
             Some(xist_hours()),
-        ),
+        )
+        .with_exceptions(XIST_SKIP),
         Xtae => Calendar::with_type(
             name,
             market_type("Equities"),
             TASE_WEEKMASK,
             xtae_rules(),
             Some(xtae_hours()),
-        ),
+        )
+        .with_exceptions(XTAE_SKIP),
         Xdfm => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2760,7 +4882,9 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             bvmf_rules(),
             Some(bvmf_hours()),
-        ),
+        )
+        // In 2020 B3 traded on the São Paulo state/city holidays.
+        .with_exceptions(&[(2020, 7, 9), (2020, 11, 20)]),
         Xmex => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -2774,21 +4898,24 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             STANDARD_WEEKMASK,
             xbue_rules(),
             Some(xbue_hours()),
-        ),
+        )
+        .with_exceptions(XBUE_SKIP),
         Xsgo => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             xsgo_rules(),
             Some(xsgo_hours()),
-        ),
+        )
+        .with_exceptions(XSGO_SKIP),
         Xlim => Calendar::with_type(
             name,
             market_type("Equities"),
             STANDARD_WEEKMASK,
             xlim_rules(),
             Some(xlim_hours()),
-        ),
+        )
+        .with_exceptions(XLIM_SKIP),
         Xbog => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -3020,16 +5147,80 @@ mod tests {
     }
 
     #[test]
-    fn nyse_juneteenth_first_year_2021() {
+    fn nyse_juneteenth_first_year_2022() {
         let cal = calendar_for_exchange("XNYS").unwrap();
+        // NYSE first observed Juneteenth in 2022; the market was open on
+        // 2021-06-18 (federal holiday established too late to be observed).
         assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2020, 6, 19).unwrap()));
-        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 6, 18).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2021, 6, 18).unwrap()));
+        // 2022-06-19 was a Sunday, observed Monday 2022-06-20.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 6, 20).unwrap()));
+    }
+
+    #[test]
+    fn nyse_carter_day_of_mourning_2025() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        // Jan 9, 2025 was a Thursday, closed for President Carter's funeral.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 9).unwrap()));
+        // Adjacent trading days remain open.
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 8).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2025, 1, 10).unwrap()));
+    }
+
+    #[test]
+    fn nyse_special_closures_9_11_and_sandy() {
+        let cal = calendar_for_exchange("XNYS").unwrap();
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2001, 9, 11).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2012, 10, 29).unwrap()));
     }
 
     #[test]
     fn lse_easter_monday_2024() {
         let cal = calendar_for_exchange("XLON").unwrap();
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 4, 1).unwrap()));
+    }
+
+    #[test]
+    fn jpx_equinox_substitute_and_citizens() {
+        let cal = calendar_for_exchange("XTKS").unwrap();
+        // Computed equinoxes.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 3, 20).unwrap())); // vernal
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 9, 22).unwrap())); // autumnal
+                                                                                // Citizens' holiday: 2015-09-22, between Respect-for-the-Aged (Mon 21)
+                                                                                // and the autumnal equinox (Wed 23).
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2015, 9, 22).unwrap()));
+        // Substitute holiday: Constitution Day 2020-05-03 (Sun) → Wed May 6.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 5, 6).unwrap()));
+        // Olympic move: Marine Day 2020 to Jul 23, not the normal 3rd Monday.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 7, 23).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2020, 7, 20).unwrap()));
+    }
+
+    #[test]
+    fn tsx_victoria_day_and_substitution() {
+        let cal = calendar_for_exchange("XTSE").unwrap();
+        // Victoria Day = Monday on or before May 24 (not last Monday of May).
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 5, 20).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2024, 5, 27).unwrap()));
+        // Canada Day 2023-07-01 Sat → substitute Mon Jul 3.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 7, 3).unwrap()));
+    }
+
+    #[test]
+    fn lse_bank_holiday_substitution_and_oneoffs() {
+        let cal = calendar_for_exchange("XLON").unwrap();
+        // New Year 2022-01-01 Sat → substitute Mon Jan 3.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 1, 3).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2022, 1, 1).unwrap()));
+        // Christmas 2021: Dec 25 Sat → Mon 27, Boxing → Tue 28.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 12, 27).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2021, 12, 28).unwrap()));
+        // One-off closures.
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 9, 19).unwrap())); // Queen funeral
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 5, 8).unwrap())); // Coronation
+                                                                               // Spring bank holiday moved in 2022: May 30 traded, Jun 2 closed.
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2022, 5, 30).unwrap()));
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2022, 6, 2).unwrap()));
     }
 
     #[test]
@@ -3413,11 +5604,11 @@ mod tests {
     }
 
     #[test]
-    fn xams_kingsday_2024() {
-        // Apr 27 2024 falls on a Saturday; King's Day skipped (no roll).
-        // Test 2023 instead: Apr 27 2023 = Thursday, holiday.
+    fn xams_no_kingsday_closure() {
+        // Euronext Amsterdam does not close for King's Day; it observes only the
+        // six harmonized Euronext holidays. Apr 27 2023 was a trading day.
         let cal = calendar_for_exchange("XAMS").unwrap();
-        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2023, 4, 27).unwrap()));
+        assert!(!cal.is_holiday(NaiveDate::from_ymd_opt(2023, 4, 27).unwrap()));
     }
 
     #[test]

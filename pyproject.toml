@@ -55,6 +55,16 @@ develop = [
     "uv",
     "wheel",
     "yardang",
+    # Reference calendar oracles for the cross-check test (test-only, offline).
+    "finance-dates[reference]",
+]
+# Independent reference calendar libraries used only by
+# finance_dates/tests/test_reference_calendars.py to validate our calendars.
+# Their holiday data ships in the package, so the check is deterministic and
+# needs no network access. Not vendored into our source.
+reference = [
+    "pandas-market-calendars",
+    "exchange-calendars",
 ]
 
 [project.scripts]

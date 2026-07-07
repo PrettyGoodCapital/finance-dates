@@ -2,6 +2,7 @@
 
 pub mod calendar;
 pub mod holiday;
+pub mod lunar;
 pub mod range;
 pub mod trading_hours;
 
