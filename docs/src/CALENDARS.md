@@ -1,6 +1,6 @@
 # Calendars
 
-`finance-dates` models three related ideas:
+`finance-dates` models a few related ideas:
 
 | Concept           | Purpose                                                          |
 | ----------------- | ---------------------------------------------------------------- |
@@ -51,6 +51,8 @@ from finance_dates import Calendar
 
 nyse = Calendar.from_exchange("XNYS")
 london = Calendar.from_exchange("XLON")
+tokyo = Calendar.from_exchange("XTKS")
+seoul = Calendar.from_exchange("XKRX")
 us = Calendar.from_region("US")
 ```
 
@@ -76,29 +78,117 @@ Calendar objects expose:
 | `next_open(datetime)` / `next_close(datetime)` | Next regular-session boundary if configured                                         |
 | `early_close_for(date)`                        | Local `(hour, minute)` early close or `None`                                        |
 
-Unknown exchange or region codes raise `ValueError` in Python.
+`Calendar.from_exchange()` accepts any MIC that resolves to a modeled
+family, plus resolver-only calendar aliases (see below). Exchange codes
+known to `finance-enums` but without a dedicated family fall back to the
+calendar for their ISO country when one is modeled, and otherwise to a
+plain weekmask-only calendar with the appropriate `market_type`. Codes
+that are entirely unknown, and region codes outside the supported set,
+raise `ValueError` in Python.
+
+The `weekmask` is always seven booleans indexed Monday through Sunday.
+Most venues use the standard Monday-Friday week. Saudi Arabia (`XSAU`)
+and Tel Aviv (`XTAE`) trade Sunday through Thursday, `FOREX` trades
+Sunday through Friday, and `CRYPTO` trades every day.
 
 ______________________________________________________________________
 
 ## Market families
 
-The resolver groups related MICs into calendar families. For example,
+The resolver groups related MICs into calendar families. Each family
+pairs a holiday rule set with a trading-hours template and a weekmask.
 US equity venues share the NYSE-style holiday set, options venues share
-US options hours, and CME/NYMEX futures use overnight Globex-style
-sessions. A few synthetic futures product-group codes are also accepted for
+US options hours, CME/NYMEX futures use overnight Globex-style sessions,
+and most international venues have a dedicated national holiday rule set.
+A few synthetic futures product-group codes are also accepted for
 contracts whose hours differ materially from the broad MIC family.
 
-Representative families include:
+### US and generic families
 
-| Family         | Examples                                                                                                                    | Notes                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| US equities    | `XNYS`, `XNAS`, `BATS`, `IEXG`                                                                                              | NYSE-style holidays, 09:30-16:00 regular hours, and 04:00-09:30 / 16:00-20:00 extended windows   |
-| US options     | `OPRA`, `XCBO`, `XPHL`                                                                                                      | US options classification and close conventions                                                  |
-| US bonds       | `SIFMA_US`                                                                                                                  | Includes bond-market holidays such as Columbus Day and Veterans Day                              |
-| US futures     | `XCME`, `XCBT`, `XNYM`, `ICE_US`, `CFE`, plus resolver aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`, `ZC`, `LE`, `LBR` | Overnight and split futures sessions with market-specific timezone choices                       |
-| Major equities | `XLON`, `XTKS`, `XHKG`, `XSHG`, `XEUR`, `XPAR`, `XASX`, `BVMF`                                                              | Venue-specific holiday rules where implemented; selected APAC venues expose split lunch sessions |
-| FX             | `FOREX`                                                                                                                     | 24x5, Sunday through Friday session family                                                       |
-| Crypto         | `CRYPTO`                                                                                                                    | 24x7 session family                                                                              |
+| Family / code group | Codes                                                                                                                  | Notes                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| US equities         | `XNYS`, `XNAS`, `XASE`, `ARCX`, `BATS`, `IEXG`, `MEMX`, and other US venue and OTC MICs                                | NYSE-style holidays, 09:30-16:00 ET regular hours, 04:00-09:30 / 16:00-20:00 ET extended windows |
+| US options          | `OPRA`, `XCBO`, `C2OX`, `XISE`, `GMNI`, `MCRY`, `MXOP`                                                                 | NYSE holiday set with US options market type                                                     |
+| US bonds            | `SIFMA_US`                                                                                                             | SIFMA recommended closes, adding Columbus Day and Veterans Day; 07:00-17:30 ET                   |
+| US futures          | `XCME`, `XCBT`, `GLBX`, `XNYM`, `ICE_US`, `CFE`, plus resolver aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`, `ZC` | Overnight and split futures sessions with market-specific timezone choices (see matrix below)    |
+| FX                  | `FOREX`                                                                                                                | 24x5 Sunday-through-Friday session family                                                        |
+| Crypto              | `CRYPTO`                                                                                                               | 24x7 session family                                                                              |
+
+### International equity calendars
+
+Every venue below has a dedicated national/exchange holiday rule set.
+Tokyo, Hong Kong, and Shanghai use split regular sessions for their
+lunch breaks; the rest use a single local continuous session. Saudi
+Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.
+
+| Region         | Exchanges (MIC)                      | Holiday-system highlights                                                              |
+| -------------- | ------------------------------------ | -------------------------------------------------------------------------------------- |
+| Canada         | `XTSE` (and Canadian ATS/venue MICs) | Canadian statutory holidays with observed rolls                                        |
+| Brazil         | `BVMF`                               | Carnival, Corpus Christi, Black Awareness transition, year-end conventions             |
+| Mexico         | `XMEX`                               | Constitution Day, Benito Juárez, Banxico holiday                                       |
+| Argentina      | `XBUE`                               | Carnival, movable national holidays, tabulated bridge days                             |
+| Chile          | `XSGO`                               | Religious and civic holidays plus tabulated bridge days                                |
+| Peru           | `XLIM`                               | National and religious holidays                                                        |
+| Colombia       | `XBOG`                               | Emiliani-law Monday-moved holidays                                                     |
+| United Kingdom | `XLON`                               | Bank holidays with substitute days and one-off royal closures                          |
+| Germany        | `XFRA`, `XEUR` (Xetra)               | Xetra festive block; historically date-limited unity/Whit rules                        |
+| France         | `XPAR`                               | Harmonized Euronext holiday set                                                        |
+| Netherlands    | `XAMS`                               | Harmonized Euronext holiday set                                                        |
+| Belgium        | `XBRU`                               | Harmonized Euronext holiday set                                                        |
+| Portugal       | `XLIS`                               | Harmonized Euronext holiday set                                                        |
+| Ireland        | `XDUB`                               | Euronext migration of Irish bank holidays                                              |
+| Italy          | `XMIL`                               | Euronext base plus Assumption and year-end days                                        |
+| Spain          | `XMAD`                               | Spanish national holidays                                                              |
+| Switzerland    | `XSWX`                               | Swiss national holidays                                                                |
+| Norway         | `XOSL`                               | Nordic holiday set                                                                     |
+| Sweden         | `XSTO`                               | Nordic holiday set                                                                     |
+| Finland        | `XHEL`                               | Nordic holiday set                                                                     |
+| Denmark        | `XCSE`                               | Nordic holiday set (Great Prayer Day through 2023)                                     |
+| Iceland        | `XICE`                               | Icelandic national holidays                                                            |
+| Poland         | `XWAR`                               | Polish national and religious holidays                                                 |
+| Czechia        | `XPRA`                               | Czech national holidays                                                                |
+| Hungary        | `XBUD`                               | Hungarian holidays with historically date-limited rules                                |
+| Austria        | `XWBO`                               | Austrian holidays with National Day                                                    |
+| Japan          | `XTKS`                               | Equinox computation, substitute/citizens' days, split lunch session, 2024 close change |
+| Hong Kong      | `XHKG`                               | Astronomical lunar calendar, Buddha's Birthday, split lunch session                    |
+| China          | `XSHG`                               | Lunar calendar plus tabulated Golden Week and make-up days, split lunch session        |
+| South Korea    | `XKRX`                               | Seollal/Chuseok lunar dates and tabulated substitute holidays                          |
+| Taiwan         | `XTAI`                               | Lunar New Year, tabulated bridge/make-up/typhoon closures                              |
+| Singapore      | `XSES`                               | Lunar New Year plus tabulated Islamic and festival closures                            |
+| Thailand       | `XBKK`                               | Thai royal and Buddhist holidays plus tabulated closures                               |
+| Malaysia       | `XKLS`                               | National holidays plus tabulated Islamic and lunar closures                            |
+| Indonesia      | `XIDX`                               | National holidays plus tabulated Eid and exceptions                                    |
+| Philippines    | `XPHS`                               | Philippine national and religious holidays                                             |
+| India          | `XBOM`, `XNSE`                       | Indian exchange holiday set                                                            |
+| Australia      | `XASX`                               | Australian holidays with substitute days                                               |
+| New Zealand    | `XNZE`                               | New Zealand holidays including tabulated Matariki                                      |
+| Saudi Arabia   | `XSAU`                               | Sunday-Thursday week; Eid and national days tabulated                                  |
+| Turkey         | `XIST`                               | Turkish national holidays plus tabulated Eid                                           |
+| Israel         | `XTAE`                               | Sunday-Thursday week; Hebrew-calendar Jewish holidays                                  |
+| UAE            | `XDFM`, `XADS`                       | Emirati national holidays plus tabulated Islamic dates                                 |
+| South Africa   | `XJSE`                               | South African public holidays with Sunday-to-Monday rolls                              |
+
+### Holiday systems
+
+The holiday engine composes several rule kinds so that each family can be
+expressed declaratively:
+
+- Fixed-date rules with optional weekend-roll observance (forward,
+  nearest-weekday, or Sunday-to-Monday).
+- Nth-weekday-of-month rules such as US Thanksgiving or the UK bank
+  holidays.
+- Easter-offset rules for Good Friday, Easter Monday, Corpus Christi, and
+  similar movable feasts.
+- Computed astronomical rules: Chinese, Korean, and Taiwanese lunar dates
+  and the Japanese vernal and autumnal equinoxes.
+- Per-market adjustments such as the Japanese substitute/citizens' days
+  and the Hong Kong Sunday roll.
+- Tabulated rules for events that cannot be derived from a formula:
+  Golden Week bridge and make-up days, Eid al-Fitr and Eid al-Adha,
+  Jewish holidays, Matariki, and one-off closures (state funerals,
+  typhoons, exchange outages).
+
+### Discovery and product-aware calendars
 
 `EXCHANGE_CODES` is exported for discovery and is sourced from
 `finance-enums`. `COUNTRY_CODES` and `COUNTRY_CODES3` list the supported
@@ -116,6 +206,32 @@ Calendar.from_asset(ExchangeCode.XCBT, UnderlyingAssetClass.Agriculture, subclas
 Calendar.from_asset(ExchangeCode.XNYS, UnderlyingAssetClass.Equity)
 ```
 
+### Region calendars
+
+`Calendar.from_region()` maps an ISO 3166 alpha-2 or alpha-3 country code
+to a representative exchange calendar. The following countries have an
+explicit mapping; any other code in `COUNTRY_CODES` / `COUNTRY_CODES3`
+raises `ValueError`.
+
+| Region                                                                                         | Resolves to                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `US`/`USA`                                                                                     | `XNYS`                                                                       |
+| `GB`/`GBR`                                                                                     | `XLON`                                                                       |
+| `JP`/`JPN`                                                                                     | `XTKS`                                                                       |
+| `HK`/`HKG`                                                                                     | `XHKG`                                                                       |
+| `CN`/`CHN`                                                                                     | `XSHG`                                                                       |
+| `DE`/`DEU`                                                                                     | `XFRA`                                                                       |
+| `FR`/`FRA`                                                                                     | `XPAR`                                                                       |
+| `CA`/`CAN`                                                                                     | `XTSE`                                                                       |
+| `AU`/`AUS`                                                                                     | `XASX`                                                                       |
+| `IN`/`IND`                                                                                     | `XNSE`                                                                       |
+| `NL`/`NLD`, `BE`/`BEL`, `PT`/`PRT`, `IT`/`ITA`, `ES`/`ESP`, `CH`/`CHE`                         | Euronext / national venues (`XAMS`, `XBRU`, `XLIS`, `XMIL`, `XMAD`, `XSWX`)  |
+| `NO`/`NOR`, `SE`/`SWE`, `FI`/`FIN`, `DK`/`DNK`, `IS`/`ISL`                                     | Nordic venues (`XOSL`, `XSTO`, `XHEL`, `XCSE`, `XICE`)                       |
+| `PL`/`POL`, `CZ`/`CZE`, `HU`/`HUN`, `AT`/`AUT`, `IE`/`IRL`                                     | Central-European venues (`XWAR`, `XPRA`, `XBUD`, `XWBO`, `XDUB`)             |
+| `KR`/`KOR`, `SG`/`SGP`, `TW`/`TWN`, `TH`/`THA`, `MY`/`MYS`, `ID`/`IDN`, `PH`/`PHL`, `NZ`/`NZL` | APAC venues (`XKRX`, `XSES`, `XTAI`, `XBKK`, `XKLS`, `XIDX`, `XPHS`, `XNZE`) |
+| `ZA`/`ZAF`, `SA`/`SAU`, `TR`/`TUR`, `IL`/`ISR`, `AE`/`ARE`                                     | EMEA venues (`XJSE`, `XSAU`, `XIST`, `XTAE`, `XDFM`)                         |
+| `BR`/`BRA`, `MX`/`MEX`, `AR`/`ARG`, `CL`/`CHL`, `PE`/`PER`, `CO`/`COL`                         | Latin-American venues (`BVMF`, `XMEX`, `XBUE`, `XSGO`, `XLIM`, `XBOG`)       |
+
 ### Futures product/calendar/exchange matrix
 
 The table below is the current `Calendar.from_exchange(...)` futures mapping
@@ -130,6 +246,7 @@ they share the same resolver family and session template.
 | `LE`, `GF`, `HE`, `CME_LIVESTOCK`, `GLOBEX_LIVESTOCK`                                                                                                      | `UsFuturesCmeLivestock` | `[(8, 30, 0, 13, 5, 0)]` (CT)                         | CME livestock daytime template.                                                       |
 | `LBR`, `LS`, `CME_LUMBER`, `GLOBEX_LUMBER`                                                                                                                 | `UsFuturesCmeLumber`    | `[(9, 0, 0, 15, 5, 0)]` (CT)                          | CME lumber daytime template.                                                          |
 | `ICE_US`                                                                                                                                                   | `UsFuturesIce`          | `[(20, 0, -1, 18, 0, 0)]` (ET)                        | ICE US energy/softs broad exchange template.                                          |
+| `CFE`                                                                                                                                                      | `UsFuturesCfe`          | `[(8, 30, 0, 15, 15, 0)]` (CT)                        | CBOE Futures Exchange daytime template with the full US holiday set.                  |
 
 Only enum-backed exchange and generic identifiers are exported by
 `EXCHANGE_CODES`; many product mnemonics and synthetic product-group names in
@@ -137,10 +254,12 @@ this matrix are resolver-only aliases accepted by `Calendar.from_exchange()`.
 For product-aware code, prefer `Calendar.from_product(...)` or
 `Calendar.from_asset(...)` when the exchange/product vocabulary is known.
 
-The baseline CME holiday set used by these futures templates currently captures
-full-closure holidays (New Year's Day, Good Friday, Christmas). CME product
-holiday notices include many partial closes that remain out of scope until
-session-specific holiday truncation is modeled.
+The baseline CME Globex holiday set used by the CME/NYMEX/CBOT templates
+currently captures full-closure holidays (New Year's Day, Good Friday, Memorial
+Day, Independence Day, Thanksgiving, Christmas); ICE US uses a smaller set (New
+Year's Day, Good Friday, Christmas) and CFE uses the full US equity set. CME
+product holiday notices include many partial closes that remain out of scope
+until session-specific holiday truncation is modeled.
 
 ______________________________________________________________________
 
@@ -303,13 +422,24 @@ replacement for venue notices or regulatory calendars.
 
 Important boundaries:
 
-- Holiday rules are implemented per family and may use tabulated lunar
-  holidays for markets where simple formulae are not enough.
+- Holiday rules are implemented per family and may use tabulated lunar,
+  Islamic, or Hebrew holidays for markets where simple formulae are not
+  enough.
+- Tabulated holiday data has finite horizons. Lunar Golden Week and
+  bridge/make-up tables and similar civic-arrangement tables extend to
+  roughly 2030, and the Eid al-Fitr / Eid al-Adha tables for Saudi Arabia
+  and Turkey currently run through 2026. Dates beyond a table's horizon
+  are not modeled until the table is extended.
 - Trading-hours templates are date-effective only where explicitly implemented,
   currently including Tokyo's 2024 close-time extension. Other historical
   schedule changes may still use current-rule approximations.
+- Weekmasks are static per calendar. Saudi Arabia (`XSAU`) and Tel Aviv
+  (`XTAE`) trade Sunday-Thursday; other venues use a Monday-Friday week.
 - Some special closures, ad-hoc national mourning days, weather events,
-  or emergency interruptions may not be modeled.
+  or emergency interruptions may not be modeled beyond the one-off dates
+  already tabulated.
+- Early closes are NYSE-shaped: a single early close time applied to the
+  final regular session. Non-US half days are not generally modeled.
 - `holidays(start, end)` returns holidays, not every invalid date.
 - `business_days()` is inclusive of both endpoints.
 - Extended-hours coverage is currently populated where the calendar has a

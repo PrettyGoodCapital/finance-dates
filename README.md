@@ -78,6 +78,13 @@ and compatibility.
 
 ### Exchange and country calendars
 
+Calendars cover US equities, options, bonds, and futures alongside major
+international equity venues across the Americas, Europe, the Middle East,
+Africa, and Asia-Pacific. Each international venue has a dedicated
+national holiday rule set, including lunar (China, Hong Kong, Korea,
+Taiwan), Islamic (Saudi Arabia, Turkey, UAE), and Hebrew (Israel)
+calendars, plus computed rules such as the Japanese equinoxes.
+
 Calendars can be resolved by exchange/MIC code or by ISO country code:
 
 ```python
@@ -86,6 +93,7 @@ from finance_enums import EnergyType, ExchangeCode, UnderlyingAssetClass
 
 Calendar.from_exchange("XLON")   # London Stock Exchange
 Calendar.from_exchange("XTKS")   # Tokyo Stock Exchange, split lunch sessions
+Calendar.from_exchange("XKRX")   # Korea Exchange, lunar holidays
 Calendar.from_exchange("XCME")   # CME futures-style overnight sessions
 Calendar.from_exchange("CBOT_GRAINS")  # CBOT grain/oilseed futures sessions
 Calendar.from_exchange("CME_ENERGY")  # Globex energy-category alias
@@ -98,6 +106,24 @@ Calendar.from_region("US")       # representative US equity calendar
 `Calendar.from_exchange()` accepts additional resolver-only
 calendar aliases such as `CBOT_GRAINS`, `CME_ENERGY`, `CL`, and `ZC`; those are
 documented in the Calendars page.
+
+### Polars integration
+
+When Polars is installed, importing `finance_dates` registers a `.fdates`
+namespace on expressions and series for business-day shifting, business-day
+alignment, and day-count fractions. The top-level `period_grid()` helper
+buckets a date column into period boundaries.
+
+```python
+import polars as pl
+from finance_dates import period_grid
+
+df = pl.DataFrame({"trade": [date(2024, 7, 3), date(2024, 12, 24)]})
+df.with_columns(
+    settle=pl.col("trade").fdates.shift_business_days(2, exchange="XNYS"),
+    bucket=period_grid(pl.col("trade"), "1mo"),
+)
+```
 
 ### Documentation
 
@@ -113,7 +139,7 @@ The Rust library crate is published as `finance-dates` and imported as
 
 ```toml
 [dependencies]
-finance-dates = "0.2.0"
+finance-dates = "0.4.0"
 ```
 
 ```rust
