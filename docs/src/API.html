@@ -246,9 +246,13 @@
     <span class="n">Calendar</span><span class="p">,</span>
     <span class="n">EXCHANGE_CODES</span><span class="p">,</span>
     <span class="n">date_range</span><span class="p">,</span>
+    <span class="n">period_grid</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
+<p>Importing <code class="docutils literal notranslate"><span class="pre">finance_dates</span></code> also registers a Polars <code class="docutils literal notranslate"><span class="pre">.fdates</span></code> expression and
+series namespace when Polars is installed. See
+<a class="reference internal" href="#polars-namespace"><span class="xref myst">Polars namespace</span></a> below.</p>
 <p>For concepts, calendar families, and trading-hours conventions, see the
 <a class="reference internal" href="CALENDARS.html"><span class="std std-doc">Calendars</span></a> page.</p>
 <hr class="docutils" />
@@ -278,6 +282,16 @@
 <dt class="sig sig-object py" id="finance_dates.date_range">
 <span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">date_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_days</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#finance_dates.date_range" title="Link to this definition">¶</a></dt>
 <dd><p>Inclusive calendar-day range with a fixed step in days.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="finance_dates.period_grid">
+<span class="sig-prename descclassname"><span class="pre">finance_dates.</span></span><span class="sig-name descname"><span class="pre">period_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Expr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Frequency</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Expr</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Expr</span></span></span><a class="reference internal" href="../../_modules/finance_dates/periods.html#period_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#finance_dates.period_grid" title="Link to this definition">¶</a></dt>
+<dd><p>Return a date-bucket expression for period-aware calculations.</p>
+<p><code class="docutils literal notranslate"><span class="pre">period</span></code> accepts a <code class="docutils literal notranslate"><span class="pre">finance_enums.Frequency</span></code> value, any alias
+accepted by <code class="docutils literal notranslate"><span class="pre">finance_enums.to_frequency()</span></code>, a Polars duration
+string accepted by <code class="docutils literal notranslate"><span class="pre">dt.truncate()</span></code>, or a precomputed bucket
+expression.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -439,6 +453,22 @@ a positive integer.</p>
 business days, and <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange(...).business_days()</span></code> when
 exchange holidays matter.</p>
 </section>
+<section id="period-grid-date-period">
+<h3><code class="docutils literal notranslate"><span class="pre">period_grid(date,</span> <span class="pre">period)</span></code><a class="headerlink" href="#period-grid-date-period" title="Link to this heading">¶</a></h3>
+<p>Returns a Polars expression that buckets a date column into period
+boundaries, for period-aware grouping and resampling. <code class="docutils literal notranslate"><span class="pre">period</span></code> accepts a
+<code class="docutils literal notranslate"><span class="pre">finance_enums.Frequency</span></code> value, any alias accepted by
+<code class="docutils literal notranslate"><span class="pre">finance_enums.to_frequency()</span></code>, a Polars duration string understood by
+<code class="docutils literal notranslate"><span class="pre">Expr.dt.truncate()</span></code> (such as <code class="docutils literal notranslate"><span class="pre">&quot;1mo&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;1q&quot;</span></code>), or a precomputed bucket
+expression. Requires Polars.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">period_grid</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">28</span><span class="p">)]})</span>
+<span class="n">df</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="n">period_grid</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;d&quot;</span><span class="p">),</span> <span class="s2">&quot;1mo&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
 </section>
 <hr class="docutils" />
 <section id="calendar">
@@ -516,6 +546,54 @@ exchange calendar for recognized finance-enums asset labels.</p>
 other split schedule returns one pair per regular interval. <code class="docutils literal notranslate"><span class="pre">extended_sessions()</span></code>
 returns <code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">open,</span> <span class="pre">close)</span></code> tuples for named extended-hours windows such as
 <code class="docutils literal notranslate"><span class="pre">pre_open</span></code> and <code class="docutils literal notranslate"><span class="pre">after_close</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="polars-namespace">
+<h2>Polars namespace<a class="headerlink" href="#polars-namespace" title="Link to this heading">¶</a></h2>
+<p>Importing <code class="docutils literal notranslate"><span class="pre">finance_dates</span></code> registers a Polars <code class="docutils literal notranslate"><span class="pre">.fdates</span></code> namespace on both
+expressions and series (when Polars is installed). It provides
+calendar-aware date helpers that default to the <code class="docutils literal notranslate"><span class="pre">XNYS</span></code> calendar.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shift_business_days(n,</span> <span class="pre">*,</span> <span class="pre">exchange=&quot;XNYS&quot;)</span></code></p></td>
+<td><p>Shift each date by <code class="docutils literal notranslate"><span class="pre">n</span></code> business days forward (<code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">&gt;=</span> <span class="pre">0</span></code>) or backward (<code class="docutils literal notranslate"><span class="pre">n</span> <span class="pre">&lt;</span> <span class="pre">0</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">align_to_business_day(convention=&quot;following&quot;,</span> <span class="pre">*,</span> <span class="pre">exchange=&quot;XNYS&quot;)</span></code></p></td>
+<td><p>Roll non-business days using <code class="docutils literal notranslate"><span class="pre">following</span></code>, <code class="docutils literal notranslate"><span class="pre">preceding</span></code>, <code class="docutils literal notranslate"><span class="pre">modified_following</span></code>, or <code class="docutils literal notranslate"><span class="pre">modified_preceding</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">day_count_fraction(end,</span> <span class="pre">*,</span> <span class="pre">convention=&quot;act_360&quot;)</span></code></p></td>
+<td><p>Year fraction between two dates using <code class="docutils literal notranslate"><span class="pre">act_360</span></code>, <code class="docutils literal notranslate"><span class="pre">act_365</span></code>, <code class="docutils literal notranslate"><span class="pre">act_252</span></code>, or <code class="docutils literal notranslate"><span class="pre">30_360</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">finance_dates</span>  <span class="c1"># registers the .fdates namespace</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;trade&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">24</span><span class="p">)]})</span>
+
+<span class="n">df</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span>
+    <span class="n">settle</span><span class="o">=</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;trade&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fdates</span><span class="o">.</span><span class="n">shift_business_days</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">exchange</span><span class="o">=</span><span class="s2">&quot;XNYS&quot;</span><span class="p">),</span>
+    <span class="n">aligned</span><span class="o">=</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;trade&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fdates</span><span class="o">.</span><span class="n">align_to_business_day</span><span class="p">(</span><span class="s2">&quot;modified_following&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># Series API mirrors the expression API.</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">s</span><span class="o">.</span><span class="n">fdates</span><span class="o">.</span><span class="n">shift_business_days</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">day_count_fraction</span></code> takes the range end as its argument:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">start</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">end</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">&quot;end&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">start</span><span class="o">.</span><span class="n">fdates</span><span class="o">.</span><span class="n">day_count_fraction</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">convention</span><span class="o">=</span><span class="s2">&quot;act_365&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <hr class="docutils" />
 <section id="recipes">
@@ -617,6 +695,30 @@ returns <code class="docutils literal notranslate"><span class="pre">(name,</spa
 </pre></div>
 </div>
 </section>
+<section id="inspect-an-international-equity-calendar">
+<h3>Inspect an international equity calendar<a class="headerlink" href="#inspect-an-international-equity-calendar" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">krx</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XKRX&quot;</span><span class="p">)</span>
+<span class="n">krx</span><span class="o">.</span><span class="n">timezone</span>           <span class="c1"># &quot;Asia/Seoul&quot;</span>
+<span class="n">krx</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="mi">2024</span><span class="p">)</span>     <span class="c1"># Korean holidays including lunar Seollal and Chuseok</span>
+
+<span class="n">tase</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTAE&quot;</span><span class="p">)</span>
+<span class="n">tase</span><span class="o">.</span><span class="n">weekmask</span>          <span class="c1"># Sunday-Thursday trading week</span>
+</pre></div>
+</div>
+</section>
+<section id="bucket-dates-into-periods">
+<h3>Bucket dates into periods<a class="headerlink" href="#bucket-dates-into-periods" title="Link to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">period_grid</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">30</span><span class="p">)]})</span>
+<span class="n">df</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">period_grid</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;d&quot;</span><span class="p">),</span> <span class="s2">&quot;1mo&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">len</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 <section id="discover-supported-codes">
 <h3>Discover supported codes<a class="headerlink" href="#discover-supported-codes" title="Link to this heading">¶</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">COUNTRY_CODES</span><span class="p">,</span> <span class="n">COUNTRY_CODES3</span><span class="p">,</span> <span class="n">EXCHANGE_CODES</span>
@@ -695,6 +797,7 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#quick-start">Quick start</a></li>
 <li><a class="reference internal" href="#reference">Reference</a><ul>
 <li><a class="reference internal" href="#finance_dates.date_range"><code class="docutils literal notranslate"><span class="pre">date_range()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.period_grid"><code class="docutils literal notranslate"><span class="pre">period_grid()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar"><code class="docutils literal notranslate"><span class="pre">Calendar</span></code></a><ul>
 <li><a class="reference internal" href="#finance_dates.Calendar.business_days"><code class="docutils literal notranslate"><span class="pre">Calendar.business_days()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.business_days_between"><code class="docutils literal notranslate"><span class="pre">Calendar.business_days_between()</span></code></a></li>
@@ -727,9 +830,11 @@ listed at the top of this page. The native module
 </li>
 <li><a class="reference internal" href="#top-level-helpers">Top-level helpers</a><ul>
 <li><a class="reference internal" href="#date-range-start-end-step-days-1"><code class="docutils literal notranslate"><span class="pre">date_range(start,</span> <span class="pre">end,</span> <span class="pre">*,</span> <span class="pre">step_days=1)</span></code></a></li>
+<li><a class="reference internal" href="#period-grid-date-period"><code class="docutils literal notranslate"><span class="pre">period_grid(date,</span> <span class="pre">period)</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#calendar"><code class="docutils literal notranslate"><span class="pre">Calendar</span></code></a></li>
+<li><a class="reference internal" href="#polars-namespace">Polars namespace</a></li>
 <li><a class="reference internal" href="#recipes">Recipes</a><ul>
 <li><a class="reference internal" href="#generate-valid-trading-dates">Generate valid trading dates</a></li>
 <li><a class="reference internal" href="#generate-invalid-holiday-dates">Generate invalid holiday dates</a></li>
@@ -738,6 +843,8 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#inspect-date-effective-sessions">Inspect date-effective sessions</a></li>
 <li><a class="reference internal" href="#inspect-commodity-futures-sessions">Inspect commodity futures sessions</a></li>
 <li><a class="reference internal" href="#generate-extended-hours-windows">Generate extended-hours windows</a></li>
+<li><a class="reference internal" href="#inspect-an-international-equity-calendar">Inspect an international equity calendar</a></li>
+<li><a class="reference internal" href="#bucket-dates-into-periods">Bucket dates into periods</a></li>
 <li><a class="reference internal" href="#discover-supported-codes">Discover supported codes</a></li>
 </ul>
 </li>

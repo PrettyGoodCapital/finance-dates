@@ -9,8 +9,13 @@ from finance_dates import (
     Calendar,
     EXCHANGE_CODES,
     date_range,
+    period_grid,
 )
 ```
+
+Importing `finance_dates` also registers a Polars `.fdates` expression and
+series namespace when Polars is installed. See
+[Polars namespace](#polars-namespace) below.
 
 For concepts, calendar families, and trading-hours conventions, see the
 [Calendars](CALENDARS.md) page.
@@ -45,6 +50,8 @@ ______________________________________________________________________
 
 .. autofunction:: date_range
 
+.. autofunction:: period_grid
+
 .. autoclass:: Calendar
    :members:
    :undoc-members:
@@ -70,6 +77,23 @@ date_range(date(2024, 1, 1), date(2024, 1, 5), step_days=2)
 Use `Calendar.from_range(...).business_days()` for generic Monday-Friday
 business days, and `Calendar.from_exchange(...).business_days()` when
 exchange holidays matter.
+
+### `period_grid(date, period)`
+
+Returns a Polars expression that buckets a date column into period
+boundaries, for period-aware grouping and resampling. `period` accepts a
+`finance_enums.Frequency` value, any alias accepted by
+`finance_enums.to_frequency()`, a Polars duration string understood by
+`Expr.dt.truncate()` (such as `"1mo"` or `"1q"`), or a precomputed bucket
+expression. Requires Polars.
+
+```python
+import polars as pl
+from finance_dates import period_grid
+
+df = pl.DataFrame({"d": [date(2024, 1, 3), date(2024, 2, 15), date(2024, 2, 28)]})
+df.with_columns(bucket=period_grid(pl.col("d"), "1mo"))
+```
 
 ______________________________________________________________________
 
@@ -157,6 +181,44 @@ nyse.early_close_for(date(2024, 7, 3))
 other split schedule returns one pair per regular interval. `extended_sessions()`
 returns `(name, open, close)` tuples for named extended-hours windows such as
 `pre_open` and `after_close`.
+
+______________________________________________________________________
+
+## Polars namespace
+
+Importing `finance_dates` registers a Polars `.fdates` namespace on both
+expressions and series (when Polars is installed). It provides
+calendar-aware date helpers that default to the `XNYS` calendar.
+
+| Method                                                              | Purpose                                                                                              |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `shift_business_days(n, *, exchange="XNYS")`                        | Shift each date by `n` business days forward (`n >= 0`) or backward (`n < 0`)                        |
+| `align_to_business_day(convention="following", *, exchange="XNYS")` | Roll non-business days using `following`, `preceding`, `modified_following`, or `modified_preceding` |
+| `day_count_fraction(end, *, convention="act_360")`                  | Year fraction between two dates using `act_360`, `act_365`, `act_252`, or `30_360`                   |
+
+```python
+import polars as pl
+import finance_dates  # registers the .fdates namespace
+
+df = pl.DataFrame({"trade": [date(2024, 7, 3), date(2024, 12, 24)]})
+
+df.with_columns(
+    settle=pl.col("trade").fdates.shift_business_days(2, exchange="XNYS"),
+    aligned=pl.col("trade").fdates.align_to_business_day("modified_following"),
+)
+
+# Series API mirrors the expression API.
+s = pl.Series("d", [date(2024, 1, 2), date(2024, 4, 1)])
+s.fdates.shift_business_days(-1)
+```
+
+`day_count_fraction` takes the range end as its argument:
+
+```python
+start = pl.Series("start", [date(2024, 1, 1)])
+end = pl.Series("end", [date(2024, 7, 1)])
+start.fdates.day_count_fraction(end, convention="act_365")
+```
 
 ______________________________________________________________________
 
@@ -257,6 +319,30 @@ from finance_dates import Calendar
 cal = Calendar.from_exchange("XNYS")
 templates = cal.extended_hours
 windows = cal.extended_sessions(date(2024, 1, 8), date(2024, 1, 8))
+```
+
+### Inspect an international equity calendar
+
+```python
+from datetime import date
+from finance_dates import Calendar
+
+krx = Calendar.from_exchange("XKRX")
+krx.timezone           # "Asia/Seoul"
+krx.holidays(2024)     # Korean holidays including lunar Seollal and Chuseok
+
+tase = Calendar.from_exchange("XTAE")
+tase.weekmask          # Sunday-Thursday trading week
+```
+
+### Bucket dates into periods
+
+```python
+import polars as pl
+from finance_dates import period_grid
+
+df = pl.DataFrame({"d": [date(2024, 1, 3), date(2024, 2, 15), date(2024, 3, 30)]})
+df.group_by(period_grid(pl.col("d"), "1mo")).len()
 ```
 
 ### Discover supported codes
