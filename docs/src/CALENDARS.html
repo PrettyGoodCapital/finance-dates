@@ -1,0 +1,1080 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API" href="API.html"><link rel="prev" title="finance dates" href="../../index.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>Calendars - finance dates v0.4.0</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=890fd012" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Calendars</a></li>
+<li class="toctree-l1"><a class="reference internal" href="API.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../../_sources/docs/src/CALENDARS.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section class="tex2jax_ignore mathjax_ignore" id="calendars">
+<h1>Calendars<a class="headerlink" href="#calendars" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">finance-dates</span></code> models a few related ideas:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Concept</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Date ranges</p></td>
+<td><p>Inclusive <code class="docutils literal notranslate"><span class="pre">date</span></code> series with optional fixed day steps</p></td>
+</tr>
+<tr class="row-odd"><td><p>Business days</p></td>
+<td><p>Dates accepted by a weekmask and not present in a holiday set</p></td>
+</tr>
+<tr class="row-even"><td><p>Trading sessions</p></td>
+<td><p>Local open/close times converted to timezone-aware UTC datetimes</p></td>
+</tr>
+<tr class="row-odd"><td><p>Extended sessions</p></td>
+<td><p>Named pre-open and after-close windows where available</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The Python API is intentionally small. Use top-level helpers for plain
+date series, then use <code class="docutils literal notranslate"><span class="pre">Calendar</span></code> when venue-specific holidays or trading
+hours matter.</p>
+<hr class="docutils" />
+<section id="plain-date-series">
+<h2>Plain date series<a class="headerlink" href="#plain-date-series" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">date_range(start,</span> <span class="pre">end,</span> <span class="pre">step_days=1)</span></code> returns every date in an
+inclusive range.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">date_range</span>
+
+<span class="n">date_range</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Calendar.from_range(...).business_days()</span></code> applies the standard
+Monday-Friday weekmask and does not apply any holiday calendar. It is
+useful for quick tests and generic weekday series.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_range</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span><span class="o">.</span><span class="n">business_days</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">Calendar.business_days()</span></code> when exchange holidays matter.</p>
+</section>
+<hr class="docutils" />
+<section id="exchange-calendars">
+<h2>Exchange calendars<a class="headerlink" href="#exchange-calendars" title="Link to this heading">¶</a></h2>
+<p>Create calendars from exchange codes or ISO country codes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">london</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XLON&quot;</span><span class="p">)</span>
+<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+<span class="n">seoul</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XKRX&quot;</span><span class="p">)</span>
+<span class="n">us</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Calendar objects expose:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute / method</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p>Calendar code used by the resolver</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">market_type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> <code class="docutils literal notranslate"><span class="pre">MarketType</span></code> label, e.g. <code class="docutils literal notranslate"><span class="pre">Equities</span></code>, <code class="docutils literal notranslate"><span class="pre">Options</span></code>, <code class="docutils literal notranslate"><span class="pre">Futures</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">weekmask</span></code></p></td>
+<td><p>Seven booleans, indexed Monday through Sunday</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timezone</span></code></p></td>
+<td><p>IANA timezone for trading hours, or <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> if no hours are configured</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code></p></td>
+<td><p>One or more local regular session templates as open/close hour/minute/offset tuples</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extended_hours</span></code></p></td>
+<td><p>Named local extended-hours templates where available</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">is_business_day(date)</span></code></p></td>
+<td><p>True when the date passes weekmask and holiday checks</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">is_holiday(date)</span></code></p></td>
+<td><p>True when the date is an observed holiday</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">holidays(year)</span></code></p></td>
+<td><p>Observed holidays for a year</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">holidays(start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>Holidays in an inclusive range</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">business_days_between(start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>Count of valid business days in an inclusive range</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">business_days(start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>Exchange-aware valid dates</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sessions(start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>UTC open/close datetimes for regular sessions</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extended_sessions(start,</span> <span class="pre">end)</span></code></p></td>
+<td><p>Named UTC extended-hours windows</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">is_open(datetime)</span></code></p></td>
+<td><p>True when a UTC-aware timestamp is inside a regular session</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">next_open(datetime)</span></code> / <code class="docutils literal notranslate"><span class="pre">next_close(datetime)</span></code></p></td>
+<td><p>Next regular-session boundary if configured</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">early_close_for(date)</span></code></p></td>
+<td><p>Local <code class="docutils literal notranslate"><span class="pre">(hour,</span> <span class="pre">minute)</span></code> early close or <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code> accepts any MIC that resolves to a modeled
+family, plus resolver-only calendar aliases (see below). Exchange codes
+known to <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> but without a dedicated family fall back to the
+calendar for their ISO country when one is modeled, and otherwise to a
+plain weekmask-only calendar with the appropriate <code class="docutils literal notranslate"><span class="pre">market_type</span></code>. Codes
+that are entirely unknown, and region codes outside the supported set,
+raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> in Python.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">weekmask</span></code> is always seven booleans indexed Monday through Sunday.
+Most venues use the standard Monday-Friday week. Saudi Arabia (<code class="docutils literal notranslate"><span class="pre">XSAU</span></code>)
+and Tel Aviv (<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) trade Sunday through Thursday, <code class="docutils literal notranslate"><span class="pre">FOREX</span></code> trades
+Sunday through Friday, and <code class="docutils literal notranslate"><span class="pre">CRYPTO</span></code> trades every day.</p>
+</section>
+<hr class="docutils" />
+<section id="market-families">
+<h2>Market families<a class="headerlink" href="#market-families" title="Link to this heading">¶</a></h2>
+<p>The resolver groups related MICs into calendar families. Each family
+pairs a holiday rule set with a trading-hours template and a weekmask.
+US equity venues share the NYSE-style holiday set, options venues share
+US options hours, CME/NYMEX futures use overnight Globex-style sessions,
+and most international venues have a dedicated national holiday rule set.
+A few synthetic futures product-group codes are also accepted for
+contracts whose hours differ materially from the broad MIC family.</p>
+<section id="us-and-generic-families">
+<h3>US and generic families<a class="headerlink" href="#us-and-generic-families" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Family / code group</p></th>
+<th class="head"><p>Codes</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>US equities</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XNYS</span></code>, <code class="docutils literal notranslate"><span class="pre">XNAS</span></code>, <code class="docutils literal notranslate"><span class="pre">XASE</span></code>, <code class="docutils literal notranslate"><span class="pre">ARCX</span></code>, <code class="docutils literal notranslate"><span class="pre">BATS</span></code>, <code class="docutils literal notranslate"><span class="pre">IEXG</span></code>, <code class="docutils literal notranslate"><span class="pre">MEMX</span></code>, and other US venue and OTC MICs</p></td>
+<td><p>NYSE-style holidays, 09:30-16:00 ET regular hours, 04:00-09:30 / 16:00-20:00 ET extended windows</p></td>
+</tr>
+<tr class="row-odd"><td><p>US options</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OPRA</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBO</span></code>, <code class="docutils literal notranslate"><span class="pre">C2OX</span></code>, <code class="docutils literal notranslate"><span class="pre">XISE</span></code>, <code class="docutils literal notranslate"><span class="pre">GMNI</span></code>, <code class="docutils literal notranslate"><span class="pre">MCRY</span></code>, <code class="docutils literal notranslate"><span class="pre">MXOP</span></code></p></td>
+<td><p>NYSE holiday set with US options market type</p></td>
+</tr>
+<tr class="row-even"><td><p>US bonds</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SIFMA_US</span></code></p></td>
+<td><p>SIFMA recommended closes, adding Columbus Day and Veterans Day; 07:00-17:30 ET</p></td>
+</tr>
+<tr class="row-odd"><td><p>US futures</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">GLBX</span></code>, <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">ICE_US</span></code>, <code class="docutils literal notranslate"><span class="pre">CFE</span></code>, plus resolver aliases such as <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZC</span></code></p></td>
+<td><p>Overnight and split futures sessions with market-specific timezone choices (see matrix below)</p></td>
+</tr>
+<tr class="row-even"><td><p>FX</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FOREX</span></code></p></td>
+<td><p>24x5 Sunday-through-Friday session family</p></td>
+</tr>
+<tr class="row-odd"><td><p>Crypto</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CRYPTO</span></code></p></td>
+<td><p>24x7 session family</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="international-equity-calendars">
+<h3>International equity calendars<a class="headerlink" href="#international-equity-calendars" title="Link to this heading">¶</a></h3>
+<p>Every venue below has a dedicated national/exchange holiday rule set.
+Tokyo, Hong Kong, and Shanghai use split regular sessions for their
+lunch breaks; the rest use a single local continuous session. Saudi
+Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Region</p></th>
+<th class="head"><p>Exchanges (MIC)</p></th>
+<th class="head"><p>Holiday-system highlights</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Canada</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTSE</span></code> (and Canadian ATS/venue MICs)</p></td>
+<td><p>Canadian statutory holidays with observed rolls</p></td>
+</tr>
+<tr class="row-odd"><td><p>Brazil</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BVMF</span></code></p></td>
+<td><p>Carnival, Corpus Christi, Black Awareness transition, year-end conventions</p></td>
+</tr>
+<tr class="row-even"><td><p>Mexico</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XMEX</span></code></p></td>
+<td><p>Constitution Day, Benito Juárez, Banxico holiday</p></td>
+</tr>
+<tr class="row-odd"><td><p>Argentina</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBUE</span></code></p></td>
+<td><p>Carnival, movable national holidays, tabulated bridge days</p></td>
+</tr>
+<tr class="row-even"><td><p>Chile</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSGO</span></code></p></td>
+<td><p>Religious and civic holidays plus tabulated bridge days</p></td>
+</tr>
+<tr class="row-odd"><td><p>Peru</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XLIM</span></code></p></td>
+<td><p>National and religious holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Colombia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBOG</span></code></p></td>
+<td><p>Emiliani-law Monday-moved holidays</p></td>
+</tr>
+<tr class="row-odd"><td><p>United Kingdom</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XLON</span></code></p></td>
+<td><p>Bank holidays with substitute days and one-off royal closures</p></td>
+</tr>
+<tr class="row-even"><td><p>Germany</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XFRA</span></code>, <code class="docutils literal notranslate"><span class="pre">XEUR</span></code> (Xetra)</p></td>
+<td><p>Xetra festive block; historically date-limited unity/Whit rules</p></td>
+</tr>
+<tr class="row-odd"><td><p>France</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XPAR</span></code></p></td>
+<td><p>Harmonized Euronext holiday set</p></td>
+</tr>
+<tr class="row-even"><td><p>Netherlands</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XAMS</span></code></p></td>
+<td><p>Harmonized Euronext holiday set</p></td>
+</tr>
+<tr class="row-odd"><td><p>Belgium</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBRU</span></code></p></td>
+<td><p>Harmonized Euronext holiday set</p></td>
+</tr>
+<tr class="row-even"><td><p>Portugal</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XLIS</span></code></p></td>
+<td><p>Harmonized Euronext holiday set</p></td>
+</tr>
+<tr class="row-odd"><td><p>Ireland</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XDUB</span></code></p></td>
+<td><p>Euronext migration of Irish bank holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Italy</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XMIL</span></code></p></td>
+<td><p>Euronext base plus Assumption and year-end days</p></td>
+</tr>
+<tr class="row-odd"><td><p>Spain</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XMAD</span></code></p></td>
+<td><p>Spanish national holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Switzerland</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSWX</span></code></p></td>
+<td><p>Swiss national holidays</p></td>
+</tr>
+<tr class="row-odd"><td><p>Norway</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XOSL</span></code></p></td>
+<td><p>Nordic holiday set</p></td>
+</tr>
+<tr class="row-even"><td><p>Sweden</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSTO</span></code></p></td>
+<td><p>Nordic holiday set</p></td>
+</tr>
+<tr class="row-odd"><td><p>Finland</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XHEL</span></code></p></td>
+<td><p>Nordic holiday set</p></td>
+</tr>
+<tr class="row-even"><td><p>Denmark</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XCSE</span></code></p></td>
+<td><p>Nordic holiday set (Great Prayer Day through 2023)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Iceland</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XICE</span></code></p></td>
+<td><p>Icelandic national holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Poland</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XWAR</span></code></p></td>
+<td><p>Polish national and religious holidays</p></td>
+</tr>
+<tr class="row-odd"><td><p>Czechia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XPRA</span></code></p></td>
+<td><p>Czech national holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Hungary</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBUD</span></code></p></td>
+<td><p>Hungarian holidays with historically date-limited rules</p></td>
+</tr>
+<tr class="row-odd"><td><p>Austria</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XWBO</span></code></p></td>
+<td><p>Austrian holidays with National Day</p></td>
+</tr>
+<tr class="row-even"><td><p>Japan</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTKS</span></code></p></td>
+<td><p>Equinox computation, substitute/citizens’ days, split lunch session, 2024 close change</p></td>
+</tr>
+<tr class="row-odd"><td><p>Hong Kong</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XHKG</span></code></p></td>
+<td><p>Astronomical lunar calendar, Buddha’s Birthday, split lunch session</p></td>
+</tr>
+<tr class="row-even"><td><p>China</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSHG</span></code></p></td>
+<td><p>Lunar calendar plus tabulated Golden Week and make-up days, split lunch session</p></td>
+</tr>
+<tr class="row-odd"><td><p>South Korea</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XKRX</span></code></p></td>
+<td><p>Seollal/Chuseok lunar dates and tabulated substitute holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>Taiwan</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTAI</span></code></p></td>
+<td><p>Lunar New Year, tabulated bridge/make-up/typhoon closures</p></td>
+</tr>
+<tr class="row-odd"><td><p>Singapore</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSES</span></code></p></td>
+<td><p>Lunar New Year plus tabulated Islamic and festival closures</p></td>
+</tr>
+<tr class="row-even"><td><p>Thailand</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBKK</span></code></p></td>
+<td><p>Thai royal and Buddhist holidays plus tabulated closures</p></td>
+</tr>
+<tr class="row-odd"><td><p>Malaysia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XKLS</span></code></p></td>
+<td><p>National holidays plus tabulated Islamic and lunar closures</p></td>
+</tr>
+<tr class="row-even"><td><p>Indonesia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XIDX</span></code></p></td>
+<td><p>National holidays plus tabulated Eid and exceptions</p></td>
+</tr>
+<tr class="row-odd"><td><p>Philippines</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XPHS</span></code></p></td>
+<td><p>Philippine national and religious holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>India</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XBOM</span></code>, <code class="docutils literal notranslate"><span class="pre">XNSE</span></code></p></td>
+<td><p>Indian exchange holiday set</p></td>
+</tr>
+<tr class="row-odd"><td><p>Australia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XASX</span></code></p></td>
+<td><p>Australian holidays with substitute days</p></td>
+</tr>
+<tr class="row-even"><td><p>New Zealand</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XNZE</span></code></p></td>
+<td><p>New Zealand holidays including tabulated Matariki</p></td>
+</tr>
+<tr class="row-odd"><td><p>Saudi Arabia</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSAU</span></code></p></td>
+<td><p>Sunday-Thursday week; Eid and national days tabulated</p></td>
+</tr>
+<tr class="row-even"><td><p>Turkey</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XIST</span></code></p></td>
+<td><p>Turkish national holidays plus tabulated Eid</p></td>
+</tr>
+<tr class="row-odd"><td><p>Israel</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTAE</span></code></p></td>
+<td><p>Sunday-Thursday week; Hebrew-calendar Jewish holidays</p></td>
+</tr>
+<tr class="row-even"><td><p>UAE</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XDFM</span></code>, <code class="docutils literal notranslate"><span class="pre">XADS</span></code></p></td>
+<td><p>Emirati national holidays plus tabulated Islamic dates</p></td>
+</tr>
+<tr class="row-odd"><td><p>South Africa</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XJSE</span></code></p></td>
+<td><p>South African public holidays with Sunday-to-Monday rolls</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="holiday-systems">
+<h3>Holiday systems<a class="headerlink" href="#holiday-systems" title="Link to this heading">¶</a></h3>
+<p>The holiday engine composes several rule kinds so that each family can be
+expressed declaratively:</p>
+<ul class="simple">
+<li><p>Fixed-date rules with optional weekend-roll observance (forward,
+nearest-weekday, or Sunday-to-Monday).</p></li>
+<li><p>Nth-weekday-of-month rules such as US Thanksgiving or the UK bank
+holidays.</p></li>
+<li><p>Easter-offset rules for Good Friday, Easter Monday, Corpus Christi, and
+similar movable feasts.</p></li>
+<li><p>Computed astronomical rules: Chinese, Korean, and Taiwanese lunar dates
+and the Japanese vernal and autumnal equinoxes.</p></li>
+<li><p>Per-market adjustments such as the Japanese substitute/citizens’ days
+and the Hong Kong Sunday roll.</p></li>
+<li><p>Tabulated rules for events that cannot be derived from a formula:
+Golden Week bridge and make-up days, Eid al-Fitr and Eid al-Adha,
+Jewish holidays, Matariki, and one-off closures (state funerals,
+typhoons, exchange outages).</p></li>
+</ul>
+</section>
+<section id="discovery-and-product-aware-calendars">
+<h3>Discovery and product-aware calendars<a class="headerlink" href="#discovery-and-product-aware-calendars" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code> is exported for discovery and is sourced from
+<code class="docutils literal notranslate"><span class="pre">finance-enums</span></code>. <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> and <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code> list the supported
+ISO country-code inputs for <code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code>. For product-aware futures
+calendars, prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(exchange,</span> <span class="pre">asset_class,</span> <span class="pre">subclass=...)</span></code>
+with <code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> enum members, or their string values, over synthetic
+exchange names.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgricultureType</span><span class="p">,</span> <span class="n">EnergyType</span><span class="p">,</span> <span class="n">ExchangeCode</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span>
+
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYM</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Commodity</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">EnergyType</span><span class="o">.</span><span class="n">NaturalGas</span><span class="p">)</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XCBT</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Agriculture</span><span class="p">,</span> <span class="n">subclass</span><span class="o">=</span><span class="n">AgricultureType</span><span class="o">.</span><span class="n">Corn</span><span class="p">)</span>
+<span class="n">Calendar</span><span class="o">.</span><span class="n">from_asset</span><span class="p">(</span><span class="n">ExchangeCode</span><span class="o">.</span><span class="n">XNYS</span><span class="p">,</span> <span class="n">UnderlyingAssetClass</span><span class="o">.</span><span class="n">Equity</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="region-calendars">
+<h3>Region calendars<a class="headerlink" href="#region-calendars" title="Link to this heading">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Calendar.from_region()</span></code> maps an ISO 3166 alpha-2 or alpha-3 country code
+to a representative exchange calendar. The following countries have an
+explicit mapping; any other code in <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES</span></code> / <code class="docutils literal notranslate"><span class="pre">COUNTRY_CODES3</span></code>
+raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Region</p></th>
+<th class="head"><p>Resolves to</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">US</span></code>/<code class="docutils literal notranslate"><span class="pre">USA</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XNYS</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GB</span></code>/<code class="docutils literal notranslate"><span class="pre">GBR</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XLON</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">JP</span></code>/<code class="docutils literal notranslate"><span class="pre">JPN</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTKS</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HK</span></code>/<code class="docutils literal notranslate"><span class="pre">HKG</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XHKG</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CN</span></code>/<code class="docutils literal notranslate"><span class="pre">CHN</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XSHG</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DE</span></code>/<code class="docutils literal notranslate"><span class="pre">DEU</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XFRA</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FR</span></code>/<code class="docutils literal notranslate"><span class="pre">FRA</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XPAR</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CA</span></code>/<code class="docutils literal notranslate"><span class="pre">CAN</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XTSE</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AU</span></code>/<code class="docutils literal notranslate"><span class="pre">AUS</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XASX</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">IN</span></code>/<code class="docutils literal notranslate"><span class="pre">IND</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XNSE</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NL</span></code>/<code class="docutils literal notranslate"><span class="pre">NLD</span></code>, <code class="docutils literal notranslate"><span class="pre">BE</span></code>/<code class="docutils literal notranslate"><span class="pre">BEL</span></code>, <code class="docutils literal notranslate"><span class="pre">PT</span></code>/<code class="docutils literal notranslate"><span class="pre">PRT</span></code>, <code class="docutils literal notranslate"><span class="pre">IT</span></code>/<code class="docutils literal notranslate"><span class="pre">ITA</span></code>, <code class="docutils literal notranslate"><span class="pre">ES</span></code>/<code class="docutils literal notranslate"><span class="pre">ESP</span></code>, <code class="docutils literal notranslate"><span class="pre">CH</span></code>/<code class="docutils literal notranslate"><span class="pre">CHE</span></code></p></td>
+<td><p>Euronext / national venues (<code class="docutils literal notranslate"><span class="pre">XAMS</span></code>, <code class="docutils literal notranslate"><span class="pre">XBRU</span></code>, <code class="docutils literal notranslate"><span class="pre">XLIS</span></code>, <code class="docutils literal notranslate"><span class="pre">XMIL</span></code>, <code class="docutils literal notranslate"><span class="pre">XMAD</span></code>, <code class="docutils literal notranslate"><span class="pre">XSWX</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NO</span></code>/<code class="docutils literal notranslate"><span class="pre">NOR</span></code>, <code class="docutils literal notranslate"><span class="pre">SE</span></code>/<code class="docutils literal notranslate"><span class="pre">SWE</span></code>, <code class="docutils literal notranslate"><span class="pre">FI</span></code>/<code class="docutils literal notranslate"><span class="pre">FIN</span></code>, <code class="docutils literal notranslate"><span class="pre">DK</span></code>/<code class="docutils literal notranslate"><span class="pre">DNK</span></code>, <code class="docutils literal notranslate"><span class="pre">IS</span></code>/<code class="docutils literal notranslate"><span class="pre">ISL</span></code></p></td>
+<td><p>Nordic venues (<code class="docutils literal notranslate"><span class="pre">XOSL</span></code>, <code class="docutils literal notranslate"><span class="pre">XSTO</span></code>, <code class="docutils literal notranslate"><span class="pre">XHEL</span></code>, <code class="docutils literal notranslate"><span class="pre">XCSE</span></code>, <code class="docutils literal notranslate"><span class="pre">XICE</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PL</span></code>/<code class="docutils literal notranslate"><span class="pre">POL</span></code>, <code class="docutils literal notranslate"><span class="pre">CZ</span></code>/<code class="docutils literal notranslate"><span class="pre">CZE</span></code>, <code class="docutils literal notranslate"><span class="pre">HU</span></code>/<code class="docutils literal notranslate"><span class="pre">HUN</span></code>, <code class="docutils literal notranslate"><span class="pre">AT</span></code>/<code class="docutils literal notranslate"><span class="pre">AUT</span></code>, <code class="docutils literal notranslate"><span class="pre">IE</span></code>/<code class="docutils literal notranslate"><span class="pre">IRL</span></code></p></td>
+<td><p>Central-European venues (<code class="docutils literal notranslate"><span class="pre">XWAR</span></code>, <code class="docutils literal notranslate"><span class="pre">XPRA</span></code>, <code class="docutils literal notranslate"><span class="pre">XBUD</span></code>, <code class="docutils literal notranslate"><span class="pre">XWBO</span></code>, <code class="docutils literal notranslate"><span class="pre">XDUB</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">KR</span></code>/<code class="docutils literal notranslate"><span class="pre">KOR</span></code>, <code class="docutils literal notranslate"><span class="pre">SG</span></code>/<code class="docutils literal notranslate"><span class="pre">SGP</span></code>, <code class="docutils literal notranslate"><span class="pre">TW</span></code>/<code class="docutils literal notranslate"><span class="pre">TWN</span></code>, <code class="docutils literal notranslate"><span class="pre">TH</span></code>/<code class="docutils literal notranslate"><span class="pre">THA</span></code>, <code class="docutils literal notranslate"><span class="pre">MY</span></code>/<code class="docutils literal notranslate"><span class="pre">MYS</span></code>, <code class="docutils literal notranslate"><span class="pre">ID</span></code>/<code class="docutils literal notranslate"><span class="pre">IDN</span></code>, <code class="docutils literal notranslate"><span class="pre">PH</span></code>/<code class="docutils literal notranslate"><span class="pre">PHL</span></code>, <code class="docutils literal notranslate"><span class="pre">NZ</span></code>/<code class="docutils literal notranslate"><span class="pre">NZL</span></code></p></td>
+<td><p>APAC venues (<code class="docutils literal notranslate"><span class="pre">XKRX</span></code>, <code class="docutils literal notranslate"><span class="pre">XSES</span></code>, <code class="docutils literal notranslate"><span class="pre">XTAI</span></code>, <code class="docutils literal notranslate"><span class="pre">XBKK</span></code>, <code class="docutils literal notranslate"><span class="pre">XKLS</span></code>, <code class="docutils literal notranslate"><span class="pre">XIDX</span></code>, <code class="docutils literal notranslate"><span class="pre">XPHS</span></code>, <code class="docutils literal notranslate"><span class="pre">XNZE</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ZA</span></code>/<code class="docutils literal notranslate"><span class="pre">ZAF</span></code>, <code class="docutils literal notranslate"><span class="pre">SA</span></code>/<code class="docutils literal notranslate"><span class="pre">SAU</span></code>, <code class="docutils literal notranslate"><span class="pre">TR</span></code>/<code class="docutils literal notranslate"><span class="pre">TUR</span></code>, <code class="docutils literal notranslate"><span class="pre">IL</span></code>/<code class="docutils literal notranslate"><span class="pre">ISR</span></code>, <code class="docutils literal notranslate"><span class="pre">AE</span></code>/<code class="docutils literal notranslate"><span class="pre">ARE</span></code></p></td>
+<td><p>EMEA venues (<code class="docutils literal notranslate"><span class="pre">XJSE</span></code>, <code class="docutils literal notranslate"><span class="pre">XSAU</span></code>, <code class="docutils literal notranslate"><span class="pre">XIST</span></code>, <code class="docutils literal notranslate"><span class="pre">XTAE</span></code>, <code class="docutils literal notranslate"><span class="pre">XDFM</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BR</span></code>/<code class="docutils literal notranslate"><span class="pre">BRA</span></code>, <code class="docutils literal notranslate"><span class="pre">MX</span></code>/<code class="docutils literal notranslate"><span class="pre">MEX</span></code>, <code class="docutils literal notranslate"><span class="pre">AR</span></code>/<code class="docutils literal notranslate"><span class="pre">ARG</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>/<code class="docutils literal notranslate"><span class="pre">CHL</span></code>, <code class="docutils literal notranslate"><span class="pre">PE</span></code>/<code class="docutils literal notranslate"><span class="pre">PER</span></code>, <code class="docutils literal notranslate"><span class="pre">CO</span></code>/<code class="docutils literal notranslate"><span class="pre">COL</span></code></p></td>
+<td><p>Latin-American venues (<code class="docutils literal notranslate"><span class="pre">BVMF</span></code>, <code class="docutils literal notranslate"><span class="pre">XMEX</span></code>, <code class="docutils literal notranslate"><span class="pre">XBUE</span></code>, <code class="docutils literal notranslate"><span class="pre">XSGO</span></code>, <code class="docutils literal notranslate"><span class="pre">XLIM</span></code>, <code class="docutils literal notranslate"><span class="pre">XBOG</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="futures-product-calendar-exchange-matrix">
+<h3>Futures product/calendar/exchange matrix<a class="headerlink" href="#futures-product-calendar-exchange-matrix" title="Link to this heading">¶</a></h3>
+<p>The table below is the current <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange(...)</span></code> futures mapping
+for product and product-group aliases. Codes in the first column are grouped when
+they share the same resolver family and session template.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Inputs</p></th>
+<th class="head"><p>Calendar template</p></th>
+<th class="head"><p>Local regular sessions</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XCME</span></code>, <code class="docutils literal notranslate"><span class="pre">FCME</span></code>, <code class="docutils literal notranslate"><span class="pre">GLBX</span></code>, <code class="docutils literal notranslate"><span class="pre">XCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">FCBT</span></code>, <code class="docutils literal notranslate"><span class="pre">XKBT</span></code>, <code class="docutils literal notranslate"><span class="pre">SR3</span></code>, <code class="docutils literal notranslate"><span class="pre">ES</span></code>, <code class="docutils literal notranslate"><span class="pre">NQ</span></code>, <code class="docutils literal notranslate"><span class="pre">RTY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCme</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>Baseline CME Globex overnight template; dairy currently shares this template.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>, <code class="docutils literal notranslate"><span class="pre">MCL</span></code>, <code class="docutils literal notranslate"><span class="pre">QM</span></code>, <code class="docutils literal notranslate"><span class="pre">GC</span></code>, <code class="docutils literal notranslate"><span class="pre">MGC</span></code>, <code class="docutils literal notranslate"><span class="pre">QO</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_METALS</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeEnergy</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(17,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">16,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>NYMEX/COMEX energy and metals template with the daily 16:00-17:00 CT maintenance gap.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">ZW</span></code>, <code class="docutils literal notranslate"><span class="pre">ZS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZM</span></code>, <code class="docutils literal notranslate"><span class="pre">ZO</span></code>, <code class="docutils literal notranslate"><span class="pre">KE</span></code>, <code class="docutils literal notranslate"><span class="pre">HRS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCbotGrains</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(19,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">7,</span> <span class="pre">45,</span> <span class="pre">0),</span> <span class="pre">(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">20,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>CBOT grain/oilseed split template.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LE</span></code>, <code class="docutils literal notranslate"><span class="pre">GF</span></code>, <code class="docutils literal notranslate"><span class="pre">HE</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLivestock</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">13,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>CME livestock daytime template.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LBR</span></code>, <code class="docutils literal notranslate"><span class="pre">LS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCmeLumber</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(9,</span> <span class="pre">0,</span> <span class="pre">0,</span> <span class="pre">15,</span> <span class="pre">5,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>CME lumber daytime template.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ICE_US</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesIce</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(20,</span> <span class="pre">0,</span> <span class="pre">-1,</span> <span class="pre">18,</span> <span class="pre">0,</span> <span class="pre">0)]</span></code> (ET)</p></td>
+<td><p>ICE US energy/softs broad exchange template.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CFE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">UsFuturesCfe</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[(8,</span> <span class="pre">30,</span> <span class="pre">0,</span> <span class="pre">15,</span> <span class="pre">15,</span> <span class="pre">0)]</span></code> (CT)</p></td>
+<td><p>CBOE Futures Exchange daytime template with the full US holiday set.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Only enum-backed exchange and generic identifiers are exported by
+<code class="docutils literal notranslate"><span class="pre">EXCHANGE_CODES</span></code>; many product mnemonics and synthetic product-group names in
+this matrix are resolver-only aliases accepted by <code class="docutils literal notranslate"><span class="pre">Calendar.from_exchange()</span></code>.
+For product-aware code, prefer <code class="docutils literal notranslate"><span class="pre">Calendar.from_product(...)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(...)</span></code> when the exchange/product vocabulary is known.</p>
+<p>The baseline CME Globex holiday set used by the CME/NYMEX/CBOT templates
+currently captures full-closure holidays (New Year’s Day, Good Friday, Memorial
+Day, Independence Day, Thanksgiving, Christmas); ICE US uses a smaller set (New
+Year’s Day, Good Friday, Christmas) and CFE uses the full US equity set. CME
+product holiday notices include many partial closes that remain out of scope
+until session-specific holiday truncation is modeled.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="valid-and-invalid-date-series">
+<h2>Valid and invalid date series<a class="headerlink" href="#valid-and-invalid-date-series" title="Link to this heading">¶</a></h2>
+<p>Common workflows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+
+<span class="n">valid_dates</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">invalid_holidays</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<span class="n">sessions</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">business_days()</span></code> returns valid trading dates. <code class="docutils literal notranslate"><span class="pre">holidays(start,</span> <span class="pre">end)</span></code>
+returns the observed holidays that explain many invalid weekdays.
+Weekend invalid dates are not included in <code class="docutils literal notranslate"><span class="pre">holidays(start,</span> <span class="pre">end)</span></code>; derive
+those separately if you need all invalid calendar dates.</p>
+</section>
+<hr class="docutils" />
+<section id="trading-hours-and-early-closes">
+<h2>Trading hours and early closes<a class="headerlink" href="#trading-hours-and-early-closes" title="Link to this heading">¶</a></h2>
+<p>Trading hours are stored in local exchange time and converted to UTC for
+timestamp operations. This makes DST transitions explicit at the output
+boundary:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
+
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Regular trading days may contain more than one session. Venues with scheduled
+lunch breaks expose one <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code> tuple per interval, and
+<code class="docutils literal notranslate"><span class="pre">sessions(start,</span> <span class="pre">end)</span></code> returns one UTC open/close pair per regular session per
+business day:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+<span class="n">tokyo</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]</span>
+
+<span class="n">hong_kong</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XHKG&quot;</span><span class="p">)</span>
+<span class="n">hong_kong</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 30, 0, 12, 0, 0), (13, 0, 0, 16, 0, 0)]</span>
+
+<span class="n">shanghai</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XSHG&quot;</span><span class="p">)</span>
+<span class="n">shanghai</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 30, 0, 11, 30, 0), (13, 0, 0, 15, 0, 0)]</span>
+</pre></div>
+</div>
+<p>The Shanghai afternoon interval includes the closing call auction through
+15:00. Tokyo uses a date-effective schedule around the 2024-11-05 trading-hours
+extension: dates before the change close at 15:00 local, and dates on or after
+the change use the current 15:30 close. Most other built-in calendars still use
+static current-rule templates unless otherwise documented.</p>
+<p><code class="docutils literal notranslate"><span class="pre">next_open()</span></code> and <code class="docutils literal notranslate"><span class="pre">next_close()</span></code> return the next matching boundary inclusively.
+At an exact session open, <code class="docutils literal notranslate"><span class="pre">is_open()</span></code> is true and <code class="docutils literal notranslate"><span class="pre">next_open()</span></code> returns that same
+instant. At an exact session close, <code class="docutils literal notranslate"><span class="pre">is_open()</span></code> is false and <code class="docutils literal notranslate"><span class="pre">next_close()</span></code>
+returns that same close instant.</p>
+<p>Early closes shorten the final session for the affected trading day.
+For example, NYSE July 3, 2024 closes at 13:00 New York time:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">nyse</span><span class="o">.</span><span class="n">early_close_for</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>  <span class="c1"># (13, 0)</span>
+</pre></div>
+</div>
+<p>US equity calendars also expose informational extended-hours windows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">nyse</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(9, 30, 0, 16, 0, 0)]</span>
+
+<span class="n">nyse</span><span class="o">.</span><span class="n">extended_hours</span>
+<span class="c1"># [(&quot;pre_open&quot;, 4, 0, 0, 9, 30, 0), (&quot;after_close&quot;, 16, 0, 0, 20, 0, 0)]</span>
+
+<span class="n">nyse</span><span class="o">.</span><span class="n">extended_sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">extended_sessions()</span></code> returns <code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">open,</span> <span class="pre">close)</span></code> tuples with UTC
+datetimes. On NYSE early-close days, <code class="docutils literal notranslate"><span class="pre">after_close</span></code> begins at the early
+close rather than the regular 16:00 close.</p>
+<p>Futures sessions can cross midnight. In <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code>, day offsets
+describe the local trading-day relationship:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cme</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XCME&quot;</span><span class="p">)</span>
+<span class="n">cme</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(17, 0, -1, 16, 0, 0)]</span>
+</pre></div>
+</div>
+<p>That tuple means the session opens at 17:00 on the previous local day
+and closes at 16:00 on the trading day.</p>
+<p>NYMEX energy futures use the same Chicago-time Globex template through
+<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(ExchangeCode.XNYM,</span> <span class="pre">UnderlyingAssetClass.Commodity,</span> <span class="pre">subclass=EnergyType.NaturalGas)</span></code>, <code class="docutils literal notranslate"><span class="pre">Calendar.from_product(&quot;XNYM&quot;,</span> <span class="pre">&quot;NaturalGas&quot;)</span></code>,
+and lower-level aliases such as <code class="docutils literal notranslate"><span class="pre">XNYM</span></code>, <code class="docutils literal notranslate"><span class="pre">NYMEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">COMEX_METALS</span></code>, <code class="docutils literal notranslate"><span class="pre">CL</span></code>,
+<code class="docutils literal notranslate"><span class="pre">MCL</span></code>, <code class="docutils literal notranslate"><span class="pre">QM</span></code>, <code class="docutils literal notranslate"><span class="pre">GC</span></code>, <code class="docutils literal notranslate"><span class="pre">MGC</span></code>, and <code class="docutils literal notranslate"><span class="pre">QO</span></code>. The daily 16:00-17:00 CT maintenance
+window is closed; <code class="docutils literal notranslate"><span class="pre">next_open()</span></code> from that gap returns the 17:00 CT open for the
+next trade date.</p>
+<p>For broader category-level parity with CME Globex filters, energy and metals
+aliases also include <code class="docutils literal notranslate"><span class="pre">CME_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">GLOBEX_ENERGY</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_METALS</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">GLOBEX_METALS</span></code>.</p>
+<p>CBOT grain and oilseed futures have a more unusual split schedule. Use
+<code class="docutils literal notranslate"><span class="pre">Calendar.from_asset(ExchangeCode.XCBT,</span> <span class="pre">UnderlyingAssetClass.Agriculture,</span> <span class="pre">subclass=AgricultureType.Corn)</span></code> when resolving from finance-enums vocabulary, or
+the lower-level synthetic product-group codes <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code>,
+<code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, or product mnemonics such as <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">ZW</span></code>, and <code class="docutils literal notranslate"><span class="pre">ZS</span></code> when that
+distinction matters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>
+<span class="n">grains</span><span class="o">.</span><span class="n">regular_sessions</span>
+<span class="c1"># [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]</span>
+</pre></div>
+</div>
+<p>Equivalent grain/oilseed aliases include <code class="docutils literal notranslate"><span class="pre">CBOT_OILSEEDS</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_WHEAT</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CBOT_CORN</span></code>, <code class="docutils literal notranslate"><span class="pre">CBOT_SOYBEANS</span></code>, <code class="docutils literal notranslate"><span class="pre">ZL</span></code>, <code class="docutils literal notranslate"><span class="pre">ZM</span></code>, <code class="docutils literal notranslate"><span class="pre">ZO</span></code>, <code class="docutils literal notranslate"><span class="pre">KE</span></code>, and <code class="docutils literal notranslate"><span class="pre">HRS</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code> and the product mnemonics <code class="docutils literal notranslate"><span class="pre">LE</span></code>, <code class="docutils literal notranslate"><span class="pre">GF</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">HE</span></code> use the daytime livestock session (08:30-13:05 CT). <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> /
+<code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code> and <code class="docutils literal notranslate"><span class="pre">LBR</span></code> / <code class="docutils literal notranslate"><span class="pre">LS</span></code> use a daytime lumber session (09:00-15:05 CT).
+<code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code> use the overnight dairy template (17:00 previous
+day to 16:00 trade date CT).</p>
+<section id="source-backed-status-and-remaining-placeholders">
+<h3>Source-backed status and remaining placeholders<a class="headerlink" href="#source-backed-status-and-remaining-placeholders" title="Link to this heading">¶</a></h3>
+<p>This is a current audit of major schedule assumptions and placeholders that are
+still present in the futures layer.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Area</p></th>
+<th class="head"><p>Current behavior</p></th>
+<th class="head"><p>Status</p></th>
+<th class="head"><p>Needed source to remove placeholder</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LE</span></code> / <code class="docutils literal notranslate"><span class="pre">GF</span></code> / <code class="docutils literal notranslate"><span class="pre">HE</span></code> / <code class="docutils literal notranslate"><span class="pre">CME_LIVESTOCK</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LIVESTOCK</span></code></p></td>
+<td><p>Routed to 08:30-13:05 CT livestock session</p></td>
+<td><p>Source-backed</p></td>
+<td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CME_DAIRY</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_DAIRY</span></code></p></td>
+<td><p>Routed to 17:00-16:00 CT overnight dairy session</p></td>
+<td><p>Source-backed</p></td>
+<td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LBR</span></code> / <code class="docutils literal notranslate"><span class="pre">LS</span></code> / <code class="docutils literal notranslate"><span class="pre">CME_LUMBER</span></code> / <code class="docutils literal notranslate"><span class="pre">GLOBEX_LUMBER</span></code></p></td>
+<td><p>Routed to 09:00-15:05 CT lumber session</p></td>
+<td><p>Source-backed</p></td>
+<td><p>Optional chapter citation if you want external-link provenance in docs</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ZC</span></code> / <code class="docutils literal notranslate"><span class="pre">ZW</span></code> / <code class="docutils literal notranslate"><span class="pre">ZS</span></code> / <code class="docutils literal notranslate"><span class="pre">ZL</span></code> / <code class="docutils literal notranslate"><span class="pre">ZM</span></code> / <code class="docutils literal notranslate"><span class="pre">ZO</span></code> / <code class="docutils literal notranslate"><span class="pre">KE</span></code> / <code class="docutils literal notranslate"><span class="pre">HRS</span></code> and CBOT grain bucket aliases</p></td>
+<td><p>Aliased to shared grain split template</p></td>
+<td><p>Partial</p></td>
+<td><p>Product-level confirmation for exact overnight/day split by contract group</p></td>
+</tr>
+<tr class="row-even"><td><p>CME futures historical transitions</p></td>
+<td><p>Mostly static schedule templates</p></td>
+<td><p>Partial</p></td>
+<td><p>Official effective-date change logs for each product family (not just current hours)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>If you can share authoritative links or chapter extracts for those items, they
+can be promoted from placeholder/partial to source-backed templates.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="scope-and-limitations">
+<h2>Scope and limitations<a class="headerlink" href="#scope-and-limitations" title="Link to this heading">¶</a></h2>
+<p>Calendar support is designed for deterministic application logic and
+tests. It includes a broad set of exchange families, but it is not a
+replacement for venue notices or regulatory calendars.</p>
+<p>Important boundaries:</p>
+<ul class="simple">
+<li><p>Holiday rules are implemented per family and may use tabulated lunar,
+Islamic, or Hebrew holidays for markets where simple formulae are not
+enough.</p></li>
+<li><p>Tabulated holiday data has finite horizons. Lunar Golden Week and
+bridge/make-up tables and similar civic-arrangement tables extend to
+roughly 2030, and the Eid al-Fitr / Eid al-Adha tables for Saudi Arabia
+and Turkey currently run through 2026. Dates beyond a table’s horizon
+are not modeled until the table is extended.</p></li>
+<li><p>Trading-hours templates are date-effective only where explicitly implemented,
+currently including Tokyo’s 2024 close-time extension. Other historical
+schedule changes may still use current-rule approximations.</p></li>
+<li><p>Weekmasks are static per calendar. Saudi Arabia (<code class="docutils literal notranslate"><span class="pre">XSAU</span></code>) and Tel Aviv
+(<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) trade Sunday-Thursday; other venues use a Monday-Friday week.</p></li>
+<li><p>Some special closures, ad-hoc national mourning days, weather events,
+or emergency interruptions may not be modeled beyond the one-off dates
+already tabulated.</p></li>
+<li><p>Early closes are NYSE-shaped: a single early close time applied to the
+final regular session. Non-US half days are not generally modeled.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">holidays(start,</span> <span class="pre">end)</span></code> returns holidays, not every invalid date.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">business_days()</span></code> is inclusive of both endpoints.</p></li>
+<li><p>Extended-hours coverage is currently populated where the calendar has a
+known source-of-truth window; absent <code class="docutils literal notranslate"><span class="pre">extended_hours</span></code> means no extended
+template is configured, not that the venue never has one.</p></li>
+<li><p>Datetime inputs are interpreted as UTC when naive; prefer timezone-aware
+UTC datetimes for clarity.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="API.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">API</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../../index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; PrettyGoodCapital
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Calendars</a><ul>
+<li><a class="reference internal" href="#plain-date-series">Plain date series</a></li>
+<li><a class="reference internal" href="#exchange-calendars">Exchange calendars</a></li>
+<li><a class="reference internal" href="#market-families">Market families</a><ul>
+<li><a class="reference internal" href="#us-and-generic-families">US and generic families</a></li>
+<li><a class="reference internal" href="#international-equity-calendars">International equity calendars</a></li>
+<li><a class="reference internal" href="#holiday-systems">Holiday systems</a></li>
+<li><a class="reference internal" href="#discovery-and-product-aware-calendars">Discovery and product-aware calendars</a></li>
+<li><a class="reference internal" href="#region-calendars">Region calendars</a></li>
+<li><a class="reference internal" href="#futures-product-calendar-exchange-matrix">Futures product/calendar/exchange matrix</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#valid-and-invalid-date-series">Valid and invalid date series</a></li>
+<li><a class="reference internal" href="#trading-hours-and-early-closes">Trading hours and early closes</a><ul>
+<li><a class="reference internal" href="#source-backed-status-and-remaining-placeholders">Source-backed status and remaining placeholders</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#scope-and-limitations">Scope and limitations</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script src="../../_static/js/custom.js?v=956e5d78"></script>
+    </body>
+</html>
