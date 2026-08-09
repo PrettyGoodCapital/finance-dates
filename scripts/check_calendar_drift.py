@@ -4,8 +4,8 @@
 The in-repo test (``finance_dates/tests/test_reference_calendars.py``) validates
 2015-2030, the window our curated (tabulated) holiday tables cover. This script
 runs the same reference-consensus comparison over a *future* window (2031+) so we
-learn when the reference calendars gain a year we have not yet curated, or when a
-computable calendar drifts.
+learn when both reference calendars expose a year we have not yet curated, or
+when a computable calendar drifts.
 
 It is intended for a scheduled (non-blocking) CI job that opens/updates an issue,
 not for the PR test suite. It prints a Markdown report and, when run under GitHub
@@ -101,30 +101,31 @@ def _weekdays(start: dt.date, end: dt.date):
         d += dt.timedelta(days=1)
 
 
-def future_divergences(code: str, start: dt.date, end: dt.date) -> tuple[list[dt.date], int]:
-    """Dates where our calendar differs from pandas-market-calendars over the
-    future window, plus how many are corroborated by exchange-calendars.
+def future_divergences(code: str, start: dt.date, end: dt.date) -> list[dt.date]:
+    """Dates where our calendar differs from reference consensus.
 
     pandas-market-calendars projects future lunar/Islamic/Hebrew dates and rules
-    to ~2045, so it is the forward oracle. exchange-calendars usually cannot be
-    projected past its recorded bound (especially for tabulated markets), so it
-    only corroborates where available.
+    to ~2045. exchange-calendars usually cannot be projected past its recorded
+    bound, so only dates covered by both references and on which they agree are
+    actionable.
     """
     pmc_name, ec_name = REFERENCE_CALENDARS[code]
     pmc = _pmc_sessions(pmc_name, start, end)
     if pmc is None or not pmc:
-        return [], 0
+        return []
     hi = min(end, max(pmc))
     ec = _ec_sessions(ec_name, start, hi)
+    if ec is None or not ec:
+        return []
+    hi = min(hi, max(ec))
     cal = Calendar.from_exchange(code)
-    diffs, corroborated = [], 0
+    diffs = []
     for d in _weekdays(start, hi):
         po = d in pmc
-        if cal.is_business_day(d) != po:
+        eo = d in ec
+        if po == eo and cal.is_business_day(d) != po:
             diffs.append(d)
-            if ec is not None and d <= max(ec) and (d in ec) == po:
-                corroborated += 1
-    return diffs, corroborated
+    return diffs
 
 
 def main() -> int:
@@ -135,32 +136,31 @@ def main() -> int:
     start = dt.date(args.start_year, 1, 1)
     end = dt.date(args.end_year, 12, 31)
 
-    findings: dict[str, tuple[list[dt.date], int]] = {}
+    findings: dict[str, list[dt.date]] = {}
     for code in sorted(REFERENCE_CALENDARS):
-        diffs, corrob = future_divergences(code, start, end)
+        diffs = future_divergences(code, start, end)
         if diffs:
-            findings[code] = (diffs, corrob)
+            findings[code] = diffs
 
     lines = [
         f"# Calendar reference drift {args.start_year}-{args.end_year}",
         "",
-        "Dates where `finance-dates` differs from `pandas-market-calendars` "
-        "(which projects future dates/rules) over the future window — typically a "
-        "curated holiday table that needs extending past 2030, or a "
-        "computable-calendar regression. `exchange-calendars` corroborates where "
-        "it can be projected. These are review signals, not ground truth: the "
-        "references' own future projections predate the relevant government "
-        "decrees.",
+        (
+            "Dates where `finance-dates` differs from both reference calendars over "
+            "the future window. Only dates covered by both references and on which "
+            "they agree are reported, avoiding single-source projections that predate "
+            "the relevant government decrees."
+        ),
         "",
     ]
     if not findings:
         lines.append("No drift: all markets match the reference over the window. ✅")
     else:
-        lines.append("| Exchange | Diffs | Corroborated | First year | Sample dates |")
-        lines.append("|----------|------:|-------------:|-----------:|--------------|")
-        for code, (diffs, corrob) in findings.items():
+        lines.append("| Exchange | Diffs | First year | Sample dates |")
+        lines.append("|----------|------:|-----------:|--------------|")
+        for code, diffs in findings.items():
             sample = ", ".join(d.isoformat() for d in diffs[:5])
-            lines.append(f"| {code} | {len(diffs)} | {corrob} | {diffs[0].year} | {sample} |")
+            lines.append(f"| {code} | {len(diffs)} | {diffs[0].year} | {sample} |")
     report = "\n".join(lines)
     print(report)
 
