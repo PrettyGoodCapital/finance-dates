@@ -87,9 +87,9 @@ dependencies = [
 
 [[package]]
 name = "finance_enums"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7eceebee450cadf200bbd010361214cdc9813d9e382403d8776f4e5e1ed9276"
+checksum = "439044dcfc5ff891e553fa55f4a5cd12ba8c385cd13d3c2f5ecd771d74923654"
 
 [[package]]
 name = "find-msvc-tools"

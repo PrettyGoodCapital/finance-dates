@@ -1,6 +1,6 @@
 //! pyo3 bindings for finance-dates.
 
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDate, PyDateTime, PyTzInfo};
 
@@ -22,6 +22,20 @@ fn pydate_to_naive(d: &Bound<'_, PyDate>) -> PyResult<NaiveDate> {
 
 fn naive_to_pydate<'py>(py: Python<'py>, d: NaiveDate) -> PyResult<Bound<'py, PyDate>> {
     PyDate::new(py, d.year(), d.month() as u8, d.day() as u8)
+}
+
+fn string_or_enum_name(value: &Bound<'_, PyAny>, argument: &str) -> PyResult<String> {
+    if let Ok(value) = value.extract::<String>() {
+        return Ok(value);
+    }
+    value
+        .getattr("name")
+        .and_then(|name| name.extract::<String>())
+        .map_err(|_| {
+            PyTypeError::new_err(format!(
+                "{argument} must be a string or an enum member with a string name"
+            ))
+        })
 }
 
 fn pydatetime_to_utc(dt: &Bound<'_, PyDateTime>) -> PyResult<DateTime<Utc>> {
@@ -147,8 +161,12 @@ impl PyCalendar {
     }
 
     #[classmethod]
-    fn from_exchange(_cls: &Bound<'_, pyo3::types::PyType>, code: &str) -> PyResult<Self> {
-        calendar_for_exchange(code)
+    fn from_exchange(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        code: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
+        let code = string_or_enum_name(code, "code")?;
+        calendar_for_exchange(&code)
             .map(Self::from_inner)
             .ok_or_else(|| PyValueError::new_err(format!("unknown exchange code: {code}")))
     }
@@ -156,10 +174,12 @@ impl PyCalendar {
     #[classmethod]
     fn from_product(
         _cls: &Bound<'_, pyo3::types::PyType>,
-        exchange: &str,
-        product: &str,
+        exchange: &Bound<'_, PyAny>,
+        product: &Bound<'_, PyAny>,
     ) -> PyResult<Self> {
-        calendar_for_product(exchange, product)
+        let exchange = string_or_enum_name(exchange, "exchange")?;
+        let product = string_or_enum_name(product, "product")?;
+        calendar_for_product(&exchange, &product)
             .map(Self::from_inner)
             .ok_or_else(|| {
                 PyValueError::new_err(format!(
@@ -172,14 +192,19 @@ impl PyCalendar {
     #[pyo3(signature = (exchange, asset_class, *, subclass = None))]
     fn from_asset(
         _cls: &Bound<'_, pyo3::types::PyType>,
-        exchange: &str,
-        asset_class: &str,
-        subclass: Option<&str>,
+        exchange: &Bound<'_, PyAny>,
+        asset_class: &Bound<'_, PyAny>,
+        subclass: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        calendar_for_asset(exchange, asset_class, subclass)
+        let exchange = string_or_enum_name(exchange, "exchange")?;
+        let asset_class = string_or_enum_name(asset_class, "asset_class")?;
+        let subclass = subclass
+            .map(|value| string_or_enum_name(value, "subclass"))
+            .transpose()?;
+        calendar_for_asset(&exchange, &asset_class, subclass.as_deref())
             .map(Self::from_inner)
             .ok_or_else(|| {
-                let detail = match subclass {
+                let detail = match subclass.as_deref() {
                     Some(subclass) => format!("{exchange}/{asset_class}/{subclass}"),
                     None => format!("{exchange}/{asset_class}"),
                 };
@@ -188,8 +213,12 @@ impl PyCalendar {
     }
 
     #[classmethod]
-    fn from_region(_cls: &Bound<'_, pyo3::types::PyType>, code: &str) -> PyResult<Self> {
-        calendar_for_region(code)
+    fn from_region(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        code: &Bound<'_, PyAny>,
+    ) -> PyResult<Self> {
+        let code = string_or_enum_name(code, "code")?;
+        calendar_for_region(&code)
             .map(Self::from_inner)
             .ok_or_else(|| PyValueError::new_err(format!("unknown country code: {code}")))
     }

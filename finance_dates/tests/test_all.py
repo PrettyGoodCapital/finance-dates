@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 import pytest
-from finance_enums import AgricultureType, EnergyType, ExchangeCode, MetalsType, UnderlyingAssetClass
+from finance_enums import AgricultureType, CountryCode, EnergyType, ExchangeCode, MetalsType, UnderlyingAssetClass
 
 import finance_dates
 from finance_dates import (
@@ -293,6 +293,12 @@ def test_calendar_from_asset_accepts_finance_enum_members() -> None:
 
     with pytest.raises(ValueError):
         Calendar.from_asset(ExchangeCode.XNYS, "NotAnAssetClass")
+
+
+def test_calendar_resolvers_accept_finance_enum_members() -> None:
+    assert Calendar.from_exchange(ExchangeCode.XNYS).name == "XNYS"
+    assert Calendar.from_product(ExchangeCode.XNYM, EnergyType.NaturalGas).name == "XNYM:NaturalGas"
+    assert Calendar.from_region(CountryCode.US).name == "XNYS"
 
 
 def test_cme_futures_open_sunday_evening_chicago() -> None:

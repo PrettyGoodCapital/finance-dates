@@ -17,9 +17,23 @@ pub use finance_enums::data::{
     AgricultureType_VARIANTS as AGRICULTURE_TYPES, CommodityType_VARIANTS as COMMODITY_TYPES,
     CountryCode3_VARIANTS as COUNTRY_CODES3, CountryCode_VARIANTS as COUNTRY_CODES,
     EnergyType_VARIANTS as ENERGY_TYPES, ExchangeCode_VARIANTS as EXCHANGE_CODES,
-    MarketType_VARIANTS as MARKET_TYPES, MetalsType_VARIANTS as METALS_TYPES,
-    UnderlyingAssetClass_VARIANTS as UNDERLYING_ASSET_CLASSES,
+    MetalsType_VARIANTS as METALS_TYPES, UnderlyingAssetClass_VARIANTS as UNDERLYING_ASSET_CLASSES,
 };
+
+/// Market types usable by calendars. The finance-enums C ABI sentinel
+/// `MarketType::Invalid` is intentionally excluded.
+pub const MARKET_TYPES: &[&str] = &[
+    "Equities",
+    "FixedIncome",
+    "ForeignExchange",
+    "Commodities",
+    "Derivatives",
+    "Options",
+    "Futures",
+    "Funds",
+    "DigitalAssets",
+    "OverTheCounter",
+];
 
 /// Mon-Sun all-true weekmask (used by 24x7 crypto venues).
 pub const CRYPTO_WEEKMASK: [bool; 7] = [true, true, true, true, true, true, true];
@@ -42,7 +56,11 @@ fn finance_enum_variant(
 }
 
 fn market_type(variant: &str) -> &'static str {
-    finance_enum_variant(MARKET_TYPE_ENUM, MARKET_TYPES, variant)
+    finance_enum_variant(
+        MARKET_TYPE_ENUM,
+        finance_enums::data::MarketType_VARIANTS,
+        variant,
+    )
 }
 
 /// Date-effective schedule data for a calendar family.
@@ -5528,7 +5546,10 @@ mod tests {
             "OverTheCounter",
         ];
         assert_eq!(MARKET_TYPES, expected);
-        assert!(!MARKET_TYPES.contains(&"Other"));
+        assert!(MARKET_TYPES
+            .iter()
+            .all(|variant| finance_enums::data::MarketType_VARIANTS.contains(variant)));
+        assert!(!MARKET_TYPES.contains(&"Invalid"));
     }
 
     #[test]
