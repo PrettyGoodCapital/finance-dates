@@ -1,6 +1,12 @@
 import datetime as dt
+import importlib.util
+from pathlib import Path
 
-import scripts.check_calendar_drift as drift
+_SCRIPT = Path(__file__).parents[2] / "scripts" / "check_calendar_drift.py"
+_SPEC = importlib.util.spec_from_file_location("check_calendar_drift", _SCRIPT)
+assert _SPEC is not None and _SPEC.loader is not None
+drift = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(drift)
 
 
 class ClosedCalendar:
