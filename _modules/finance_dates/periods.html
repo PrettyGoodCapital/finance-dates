@@ -231,14 +231,14 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for finance_dates.periods</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Period-grid helpers shared across finance packages.&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""Period-grid helpers shared across finance packages."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_enums</span><span class="w"> </span><span class="kn">import</span> <span class="n">Frequency</span><span class="p">,</span> <span class="n">to_frequency</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;period_grid&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"period_grid"</span><span class="p">]</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_period_rule</span><span class="p">(</span><span class="n">period</span><span class="p">:</span> <span class="n">Frequency</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -246,7 +246,7 @@
         <span class="k">return</span> <span class="n">period</span><span class="o">.</span><span class="n">polars_truncate</span>
     <span class="n">value</span> <span class="o">=</span> <span class="n">period</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;period must not be empty&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"period must not be empty"</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">to_frequency</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">polars_truncate</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
@@ -256,13 +256,13 @@
 <div class="viewcode-block" id="period_grid">
 <a class="viewcode-back" href="../../docs/src/API.html#finance_dates.period_grid">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">period_grid</span><span class="p">(</span><span class="n">date</span><span class="p">:</span> <span class="n">pl</span><span class="o">.</span><span class="n">Expr</span><span class="p">,</span> <span class="n">period</span><span class="p">:</span> <span class="n">Frequency</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pl</span><span class="o">.</span><span class="n">Expr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pl</span><span class="o">.</span><span class="n">Expr</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a date-bucket expression for period-aware calculations.</span>
+<span class="w">    </span><span class="sd">"""Return a date-bucket expression for period-aware calculations.</span>
 
 <span class="sd">    ``period`` accepts a ``finance_enums.Frequency`` value, any alias</span>
 <span class="sd">    accepted by ``finance_enums.to_frequency()``, a Polars duration</span>
 <span class="sd">    string accepted by ``dt.truncate()``, or a precomputed bucket</span>
 <span class="sd">    expression.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">period</span><span class="p">,</span> <span class="n">pl</span><span class="o">.</span><span class="n">Expr</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">period</span>
     <span class="k">return</span> <span class="n">date</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">_period_rule</span><span class="p">(</span><span class="n">period</span><span class="p">))</span></div>

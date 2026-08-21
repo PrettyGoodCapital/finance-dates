@@ -294,11 +294,11 @@ useful for quick tests and generic weekday series.</p>
 <p>Create calendars from exchange codes or ISO country codes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
 
-<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
-<span class="n">london</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XLON&quot;</span><span class="p">)</span>
-<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
-<span class="n">seoul</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XKRX&quot;</span><span class="p">)</span>
-<span class="n">us</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">&quot;US&quot;</span><span class="p">)</span>
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XNYS"</span><span class="p">)</span>
+<span class="n">london</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XLON"</span><span class="p">)</span>
+<span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XTKS"</span><span class="p">)</span>
+<span class="n">seoul</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XKRX"</span><span class="p">)</span>
+<span class="n">us</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_region</span><span class="p">(</span><span class="s2">"US"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Calendar objects expose:</p>
@@ -797,7 +797,7 @@ until session-specific holiday truncation is modeled.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
 
-<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XNYS"</span><span class="p">)</span>
 
 <span class="n">valid_dates</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">business_days</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
 <span class="n">invalid_holidays</span> <span class="o">=</span> <span class="n">nyse</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
@@ -818,7 +818,7 @@ boundary:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">finance_dates</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calendar</span>
 
-<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XNYS&quot;</span><span class="p">)</span>
+<span class="n">nyse</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XNYS"</span><span class="p">)</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
 </pre></div>
 </div>
@@ -826,15 +826,15 @@ boundary:</p>
 lunch breaks expose one <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code> tuple per interval, and
 <code class="docutils literal notranslate"><span class="pre">sessions(start,</span> <span class="pre">end)</span></code> returns one UTC open/close pair per regular session per
 business day:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XTKS&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tokyo</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XTKS"</span><span class="p">)</span>
 <span class="n">tokyo</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(9, 0, 0, 11, 30, 0), (12, 30, 0, 15, 30, 0)]</span>
 
-<span class="n">hong_kong</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XHKG&quot;</span><span class="p">)</span>
+<span class="n">hong_kong</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XHKG"</span><span class="p">)</span>
 <span class="n">hong_kong</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(9, 30, 0, 12, 0, 0), (13, 0, 0, 16, 0, 0)]</span>
 
-<span class="n">shanghai</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XSHG&quot;</span><span class="p">)</span>
+<span class="n">shanghai</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XSHG"</span><span class="p">)</span>
 <span class="n">shanghai</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(9, 30, 0, 11, 30, 0), (13, 0, 0, 15, 0, 0)]</span>
 </pre></div>
@@ -858,7 +858,7 @@ For example, NYSE July 3, 2024 closes at 13:00 New York time:</p>
 <span class="c1"># [(9, 30, 0, 16, 0, 0)]</span>
 
 <span class="n">nyse</span><span class="o">.</span><span class="n">extended_hours</span>
-<span class="c1"># [(&quot;pre_open&quot;, 4, 0, 0, 9, 30, 0), (&quot;after_close&quot;, 16, 0, 0, 20, 0, 0)]</span>
+<span class="c1"># [("pre_open", 4, 0, 0, 9, 30, 0), ("after_close", 16, 0, 0, 20, 0, 0)]</span>
 
 <span class="n">nyse</span><span class="o">.</span><span class="n">extended_sessions</span><span class="p">(</span><span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">date</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
 </pre></div>
@@ -868,7 +868,7 @@ datetimes. On NYSE early-close days, <code class="docutils literal notranslate">
 close rather than the regular 16:00 close.</p>
 <p>Futures sessions can cross midnight. In <code class="docutils literal notranslate"><span class="pre">regular_sessions</span></code>, day offsets
 describe the local trading-day relationship:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cme</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;XCME&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cme</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XCME"</span><span class="p">)</span>
 <span class="n">cme</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(17, 0, -1, 16, 0, 0)]</span>
 </pre></div>
@@ -889,7 +889,7 @@ aliases also include <code class="docutils literal notranslate"><span class="pre
 the lower-level synthetic product-group codes <code class="docutils literal notranslate"><span class="pre">CBOT_GRAINS</span></code>, <code class="docutils literal notranslate"><span class="pre">CME_GRAINS</span></code>,
 <code class="docutils literal notranslate"><span class="pre">GLOBEX_GRAINS</span></code>, or product mnemonics such as <code class="docutils literal notranslate"><span class="pre">ZC</span></code>, <code class="docutils literal notranslate"><span class="pre">ZW</span></code>, and <code class="docutils literal notranslate"><span class="pre">ZS</span></code> when that
 distinction matters:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">&quot;CBOT_GRAINS&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">grains</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"CBOT_GRAINS"</span><span class="p">)</span>
 <span class="n">grains</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(19, 0, -1, 7, 45, 0), (8, 30, 0, 13, 20, 0)]</span>
 </pre></div>
