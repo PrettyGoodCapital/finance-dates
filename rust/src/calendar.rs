@@ -94,9 +94,24 @@ struct ResolvedSchedule<'a> {
     trading_hours: Option<&'a TradingHours>,
 }
 
+/// How a calendar's schedule was selected.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CalendarSource {
+    /// An explicit calendar family or product mapping, which may be shared by venues.
+    Modeled,
+    /// A representative country calendar used for a MIC without a modeled family.
+    RegionFallback { source_calendar: String },
+    /// A weekday-only calendar without modeled holidays or trading hours.
+    WeekmaskFallback,
+    /// A calendar built directly with `Calendar::new` or `Calendar::with_type`.
+    Custom,
+}
+
 /// A holiday calendar with optional trading hours and a market classification.
 pub struct Calendar {
     pub name: String,
+    /// Schedule provenance; modeled families are not a guarantee of venue accuracy.
+    pub source: CalendarSource,
     /// One of the `MARKET_TYPES` entries, aligned with `finance-enums` `MarketType` variants.
     pub market_type: &'static str,
     pub weekmask: [bool; 7],
@@ -196,6 +211,7 @@ impl Calendar {
     ) -> Self {
         Self {
             name: name.into(),
+            source: CalendarSource::Custom,
             market_type,
             weekmask,
             rules,
@@ -643,7 +659,7 @@ fn fixed_between(
 }
 
 /// Fixed date rolled back to the preceding Friday when it lands on a weekend
-/// (year-end closure convention at SIX, B3, BVC).
+/// (year-end closure convention at B3, BVC).
 fn fixed_prev_fri(month: u32, day: u32) -> HolidayRule {
     HolidayRule::Fixed {
         month,
@@ -1618,7 +1634,10 @@ fn nse_rules() -> Vec<HolidayRule> {
 }
 
 /// India: Islamic/festival closures and bridge days, curated from the
-/// official exchange calendar (2015-2030).
+/// official exchange calendar (2015-2026).
+/// 2020 dates: https://nsearchives.nseindia.com/content/circulars/FAOP42878.pdf
+/// Special closures: CMTR60338 (2024-01-22), FAOP64959 (2024-11-20), and
+/// https://www.nseindia.com/resources/exchange-communication-holidays (2026-01-15).
 static NSE_ADDS: &[(i32, u32, u32)] = &[
     (2015, 2, 17),
     (2015, 3, 6),
@@ -1684,7 +1703,7 @@ static NSE_ADDS: &[(i32, u32, u32)] = &[
     (2020, 4, 10),
     (2020, 4, 14),
     (2020, 5, 1),
-    (2020, 7, 31),
+    (2020, 5, 25),
     (2020, 11, 16),
     (2020, 11, 30),
     (2021, 3, 11),
@@ -1722,6 +1741,7 @@ static NSE_ADDS: &[(i32, u32, u32)] = &[
     (2023, 10, 24),
     (2023, 11, 14),
     (2023, 11, 27),
+    (2024, 1, 22),
     (2024, 3, 8),
     (2024, 3, 25),
     (2024, 3, 29),
@@ -1733,6 +1753,7 @@ static NSE_ADDS: &[(i32, u32, u32)] = &[
     (2024, 7, 17),
     (2024, 11, 1),
     (2024, 11, 15),
+    (2024, 11, 20),
     (2025, 2, 26),
     (2025, 3, 14),
     (2025, 3, 31),
@@ -1744,6 +1765,7 @@ static NSE_ADDS: &[(i32, u32, u32)] = &[
     (2025, 10, 21),
     (2025, 10, 22),
     (2025, 11, 5),
+    (2026, 1, 15),
     (2026, 3, 3),
     (2026, 3, 26),
     (2026, 3, 31),
@@ -1954,7 +1976,9 @@ fn xswx_rules() -> Vec<HolidayRule> {
         fixed_no_roll(12, 24, None),
         fixed_no_roll(12, 25, None),
         fixed_no_roll(12, 26, None),
-        fixed_prev_fri(12, 31), // New Year's Eve (preceding Friday if weekend)
+        // SIX Trading Guide: December 31 is closed without a weekend substitute.
+        // https://www.six-group.com/dam/download/the-swiss-stock-exchange/trading/trading-provisions/regulation/trading-guides/trading-guide.pdf
+        fixed_no_roll(12, 31, None),
     ]
 }
 
@@ -3741,7 +3765,7 @@ fn xist_hours() -> TradingHours {
     )
 }
 
-/// Sun-Thu weekmask used by TASE.
+/// Sun-Thu weekmask used by TASE before 2026-01-05.
 const TASE_WEEKMASK: [bool; 7] = [true, true, true, true, false, false, true];
 
 fn xtae_rules() -> Vec<HolidayRule> {
@@ -3827,8 +3851,9 @@ fn xtae_rules() -> Vec<HolidayRule> {
     ]
 }
 
-/// Tel Aviv: Islamic/festival closures and bridge days, curated from the
-/// official exchange calendar (2015-2030).
+/// Tel Aviv: Jewish holiday closures and bridge days (2019-2027).
+/// https://www.tase.co.il/en/content/knowledge_center/trading_vacation_schedule/
+/// 2026-2027 dates corroborated by pandas-market-calendars and exchange-calendars.
 static XTAE_ADDS: &[(i32, u32, u32)] = &[
     (2019, 3, 21),
     (2019, 4, 9),
@@ -3906,8 +3931,51 @@ static XTAE_ADDS: &[(i32, u32, u32)] = &[
     (2025, 10, 6),
     (2025, 10, 13),
     (2025, 10, 14),
+    (2026, 4, 2),
+    (2026, 4, 7),
+    (2026, 4, 8),
+    (2026, 4, 21),
+    (2026, 5, 21),
+    (2026, 7, 23),
+    (2026, 9, 11),
+    (2026, 9, 18),
+    (2026, 9, 25),
+    (2026, 10, 2),
+    (2027, 3, 23),
+    (2027, 4, 21),
+    (2027, 4, 22),
+    (2027, 4, 27),
+    (2027, 4, 28),
+    (2027, 5, 11),
+    (2027, 5, 12),
+    (2027, 6, 10),
+    (2027, 6, 11),
+    (2027, 8, 12),
+    (2027, 10, 1),
+    (2027, 10, 8),
+    (2027, 10, 11),
+    (2027, 10, 15),
+    (2027, 10, 22),
 ];
-static XTAE_SKIP: &[(i32, u32, u32)] = &[(2026, 3, 3), (2026, 4, 1), (2026, 4, 22), (2026, 9, 21)];
+
+fn xtae_friday_early_closes() -> Vec<EarlyCloseRule> {
+    // Continuous trading ends before the closing auction on Fridays from 2026.
+    // https://www.new.isa.gov.il/images/Fittings/isa/asset_library_pic/al_lobby/al_lobby-65d5b849b3af3/Modification_TradingDays.pdf
+    (1..=12)
+        .flat_map(|month| {
+            (1..=5).map(move |n| EarlyCloseRule {
+                rule: HolidayRule::NthWeekday {
+                    month,
+                    weekday: Weekday::Fri,
+                    n,
+                    since_year: Some(2026),
+                    until_year: None,
+                },
+                close_time: NaiveTime::from_hms_opt(13, 34, 0).unwrap(),
+            })
+        })
+        .collect()
+}
 
 fn xtae_hours() -> TradingHours {
     TradingHours::new(
@@ -4528,7 +4596,7 @@ fn family_for_mic(mic: &str) -> Option<Family> {
 
 fn build_family(name: &str, fam: Family) -> Calendar {
     use Family::*;
-    match fam {
+    let mut calendar = match fam {
         UsEquity => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -4886,7 +4954,15 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             xtae_rules(),
             Some(xtae_hours()),
         )
-        .with_exceptions(XTAE_SKIP),
+        // TASE's Monday-Friday trading week starts 2026-01-05.
+        // https://www.tase.co.il/en/content/about/tradingdays_change
+        .with_schedules(vec![CalendarSchedule::new(
+            NaiveDate::from_ymd_opt(2026, 1, 5).unwrap(),
+            STANDARD_WEEKMASK,
+            xtae_rules(),
+            Some(xtae_hours()),
+        )])
+        .with_early_closes(xtae_friday_early_closes()),
         Xdfm => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -4941,11 +5017,16 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             xbog_rules(),
             Some(xbog_hours()),
         ),
-    }
+    };
+    calendar.source = CalendarSource::Modeled;
+    calendar
 }
 
 /// Build a calendar from its MIC code (or a generic family name like
-/// `FOREX`, `CRYPTO`, `SIFMA_US`, `ICE_US`, `CFE`). Returns `None` if unknown.
+/// `FOREX`, `CRYPTO`, `SIFMA_US`, `ICE_US`, `CFE`). Returns `None` if the code
+/// has neither a modeled family nor a finance-enums exchange record.
+/// Registered MICs without a modeled family use a representative country
+/// calendar or a weekday-only calendar. Inspect `Calendar::source` for provenance.
 pub fn calendar_for_exchange(code: &str) -> Option<Calendar> {
     let upper = code.to_ascii_uppercase();
     if let Some(fam) = family_for_mic(&upper) {
@@ -4954,17 +5035,22 @@ pub fn calendar_for_exchange(code: &str) -> Option<Calendar> {
 
     let record = finance_enums::data::exchange_record(&upper)?;
     if let Some(mut calendar) = calendar_for_region(record.iso_country_code) {
+        calendar.source = CalendarSource::RegionFallback {
+            source_calendar: calendar.name.clone(),
+        };
         calendar.name = upper;
         return Some(calendar);
     }
 
-    Some(Calendar::with_type(
+    let mut calendar = Calendar::with_type(
         upper,
         market_type_for_exchange_record(record),
         STANDARD_WEEKMASK,
         Vec::new(),
         None,
-    ))
+    );
+    calendar.source = CalendarSource::WeekmaskFallback;
+    Some(calendar)
 }
 
 fn market_type_for_exchange_record(record: &finance_enums::data::ExchangeRecord) -> &'static str {
@@ -5512,6 +5598,84 @@ mod tests {
     }
 
     #[test]
+    fn modeled_calendar_source() {
+        for code in [
+            "XNYS",
+            "xnys",
+            "XSHG",
+            "PINX",
+            "CBOT_GRAINS",
+            "FOREX",
+            "CRYPTO",
+        ] {
+            assert_eq!(
+                calendar_for_exchange(code).unwrap().source,
+                CalendarSource::Modeled
+            );
+        }
+        assert!(calendar_for_exchange("ZZZZ").is_none());
+    }
+
+    #[test]
+    fn chinese_futures_calendar_reports_region_fallback() {
+        let region = calendar_for_region("CN").unwrap();
+        let day = NaiveDate::from_ymd_opt(2026, 9, 15).unwrap();
+        assert_eq!(region.source, CalendarSource::Modeled);
+        for code in ["XSGE", "XDCE", "XZCE", "xsge"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            assert_eq!(cal.name, code.to_ascii_uppercase());
+            assert_eq!(
+                cal.source,
+                CalendarSource::RegionFallback {
+                    source_calendar: "XSHG".to_string(),
+                }
+            );
+            assert_eq!(cal.market_type, market_type("Equities"));
+            assert_eq!(
+                cal.sessions_between(day, day),
+                region.sessions_between(day, day)
+            );
+            assert_eq!(cal.holidays(2026), region.holidays(2026));
+        }
+    }
+
+    #[test]
+    fn weekmask_calendar_reports_fallback() {
+        let cal = calendar_for_exchange("24EX").unwrap();
+        assert_eq!(cal.source, CalendarSource::WeekmaskFallback);
+        assert_eq!(cal.weekmask, STANDARD_WEEKMASK);
+        assert!(cal.rules.is_empty());
+        assert!(cal.trading_hours.is_none());
+    }
+
+    #[test]
+    fn product_and_asset_calendar_sources() {
+        for cal in [
+            calendar_for_product("XSGE", "Gold").unwrap(),
+            calendar_for_asset("XSGE", "Commodity", Some("Gold")).unwrap(),
+        ] {
+            assert_eq!(
+                cal.source,
+                CalendarSource::RegionFallback {
+                    source_calendar: "XSHG".to_string(),
+                }
+            );
+        }
+        for cal in [
+            calendar_for_product("XNYM", "NaturalGas").unwrap(),
+            calendar_for_asset("XNYM", "Commodity", Some("NaturalGas")).unwrap(),
+        ] {
+            assert_eq!(cal.source, CalendarSource::Modeled);
+        }
+    }
+
+    #[test]
+    fn custom_calendar_source() {
+        let cal = Calendar::new("custom", STANDARD_WEEKMASK, Vec::new(), None);
+        assert_eq!(cal.source, CalendarSource::Custom);
+    }
+
+    #[test]
     fn all_exchange_codes_resolve() {
         let mut missing = Vec::new();
         for code in EXCHANGE_CODES {
@@ -5638,6 +5802,81 @@ mod tests {
         let cal = calendar_for_exchange("XKRX").unwrap();
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 2, 9).unwrap()));
         assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2024, 2, 12).unwrap()));
+    }
+
+    #[test]
+    fn indian_exchange_special_closures() {
+        for code in ["XNSE", "XBOM"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            for (y, m, d) in [(2024, 1, 22), (2024, 11, 20), (2026, 1, 15)] {
+                let day = NaiveDate::from_ymd_opt(y, m, d).unwrap();
+                assert!(cal.is_holiday(day));
+                assert!(cal.sessions_between(day, day).is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn nse_eid_2020_dates() {
+        let cal = calendar_for_exchange("XNSE").unwrap();
+        assert!(cal.is_holiday(NaiveDate::from_ymd_opt(2020, 5, 25).unwrap()));
+        assert!(cal.is_business_day(NaiveDate::from_ymd_opt(2020, 7, 31).unwrap()));
+    }
+
+    #[test]
+    fn swiss_new_years_eve_does_not_roll() {
+        let cal = calendar_for_exchange("XSWX").unwrap();
+        for (y, m, d) in [
+            (2016, 12, 30),
+            (2017, 12, 29),
+            (2022, 12, 30),
+            (2023, 12, 29),
+        ] {
+            assert!(cal.is_business_day(NaiveDate::from_ymd_opt(y, m, d).unwrap()));
+            assert!(cal.is_holiday(NaiveDate::from_ymd_opt(y, 12, 31).unwrap()));
+        }
+    }
+
+    #[test]
+    fn xtae_trading_week_changes_in_2026() {
+        let cal = calendar_for_exchange("XTAE").unwrap();
+        assert!(cal.is_business_day(NaiveDate::from_ymd_opt(2025, 12, 28).unwrap()));
+        assert!(!cal.is_business_day(NaiveDate::from_ymd_opt(2025, 12, 26).unwrap()));
+        assert!(!cal.is_business_day(NaiveDate::from_ymd_opt(2026, 1, 11).unwrap()));
+        let friday = NaiveDate::from_ymd_opt(2026, 1, 9).unwrap();
+        assert!(cal.is_business_day(friday));
+        assert_eq!(
+            cal.next_business_day(NaiveDate::from_ymd_opt(2026, 1, 8).unwrap()),
+            friday
+        );
+        assert_eq!(
+            cal.early_close_for(friday),
+            NaiveTime::from_hms_opt(13, 34, 0)
+        );
+        assert_eq!(
+            cal.early_close_for(NaiveDate::from_ymd_opt(2026, 7, 31).unwrap()),
+            NaiveTime::from_hms_opt(13, 34, 0)
+        );
+        assert_eq!(
+            cal.sessions_between(friday, friday)[0].1,
+            Utc.with_ymd_and_hms(2026, 1, 9, 11, 34, 0).unwrap()
+        );
+    }
+
+    #[test]
+    fn xtae_holidays_after_trading_week_change() {
+        let cal = calendar_for_exchange("XTAE").unwrap();
+        for (y, m, d) in [
+            (2026, 3, 3),
+            (2026, 4, 22),
+            (2026, 9, 18),
+            (2027, 3, 23),
+            (2027, 10, 8),
+        ] {
+            let day = NaiveDate::from_ymd_opt(y, m, d).unwrap();
+            assert!(cal.is_holiday(day));
+            assert!(cal.sessions_between(day, day).is_empty());
+        }
     }
 
     #[test]

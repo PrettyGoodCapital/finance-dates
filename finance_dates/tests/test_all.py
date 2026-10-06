@@ -215,6 +215,60 @@ def test_unknown_exchange_raises() -> None:
         Calendar.from_exchange("ZZZZ")
 
 
+@pytest.mark.parametrize("code", ["XNYS", "xnys", "XSHG", "PINX", "CBOT_GRAINS", "FOREX", "CRYPTO"])
+def test_modeled_calendar_source(code: str) -> None:
+    cal = Calendar.from_exchange(code)
+    assert cal.source_kind == "modeled"
+    assert cal.source_calendar is None
+
+
+@pytest.mark.parametrize("code", ["XSGE", "XDCE", "XZCE", "xsge"])
+def test_chinese_futures_calendar_reports_region_fallback(code: str) -> None:
+    cal = Calendar.from_exchange(code)
+    region = Calendar.from_region("CN")
+    day = date(2026, 9, 15)
+
+    assert cal.name == code.upper()
+    assert cal.source_kind == "region_fallback"
+    assert cal.source_calendar == "XSHG"
+    assert cal.market_type == "Equities"
+    assert cal.sessions(day, day) == region.sessions(day, day)
+    assert cal.holidays(2026) == region.holidays(2026)
+    assert region.source_kind == "modeled"
+    assert region.source_calendar is None
+
+
+def test_weekmask_calendar_reports_fallback() -> None:
+    cal = Calendar.from_exchange("24EX")
+    assert cal.source_kind == "weekmask_fallback"
+    assert cal.source_calendar is None
+    assert cal.weekmask == [True, True, True, True, True, False, False]
+    assert cal.holidays(2026) == []
+    assert cal.regular_sessions == []
+
+
+def test_product_and_asset_calendar_sources() -> None:
+    for cal in [
+        Calendar.from_product("XSGE", "Gold"),
+        Calendar.from_asset("XSGE", "Commodity", subclass="Gold"),
+    ]:
+        assert cal.source_kind == "region_fallback"
+        assert cal.source_calendar == "XSHG"
+
+    for cal in [
+        Calendar.from_product("XNYM", "NaturalGas"),
+        Calendar.from_asset("XNYM", "Commodity", subclass="NaturalGas"),
+    ]:
+        assert cal.source_kind == "modeled"
+        assert cal.source_calendar is None
+
+
+def test_range_calendar_source() -> None:
+    cal = Calendar.from_range(date(2026, 9, 14), date(2026, 9, 15))
+    assert cal.source_kind == "range"
+    assert cal.source_calendar is None
+
+
 def test_holidays_year_returns_dates() -> None:
     cal = Calendar.from_exchange("XNYS")
     hs = cal.holidays(2024)
@@ -536,6 +590,47 @@ def test_tase_uses_sun_thu_weekmask() -> None:
     wm = cal.weekmask
     assert wm[4] is False
     assert wm[6] is True
+
+
+@pytest.mark.parametrize("code", ["XNSE", "XBOM"])
+@pytest.mark.parametrize("day", [date(2024, 1, 22), date(2024, 11, 20), date(2026, 1, 15)])
+def test_indian_exchange_special_closures(code: str, day: date) -> None:
+    cal = Calendar.from_exchange(code)
+    assert cal.is_holiday(day)
+    assert cal.sessions(day, day) == []
+
+
+def test_nse_eid_2020_dates() -> None:
+    cal = Calendar.from_exchange("XNSE")
+    assert cal.is_holiday(date(2020, 5, 25))
+    assert cal.is_business_day(date(2020, 7, 31))
+
+
+@pytest.mark.parametrize("day", [date(2016, 12, 30), date(2017, 12, 29), date(2022, 12, 30), date(2023, 12, 29)])
+def test_swiss_new_years_eve_does_not_roll(day: date) -> None:
+    cal = Calendar.from_exchange("XSWX")
+    assert cal.is_business_day(day)
+    assert cal.is_holiday(date(day.year, 12, 31))
+
+
+def test_tase_trading_week_changes_in_2026() -> None:
+    cal = Calendar.from_exchange("XTAE")
+    assert cal.is_business_day(date(2025, 12, 28))
+    assert not cal.is_business_day(date(2025, 12, 26))
+    assert not cal.is_business_day(date(2026, 1, 11))
+    assert cal.is_business_day(date(2026, 1, 9))
+    assert cal.next_business_day(date(2026, 1, 8)) == date(2026, 1, 9)
+    assert cal.sessions(date(2026, 1, 11), date(2026, 1, 11)) == []
+    assert cal.sessions(date(2026, 1, 9), date(2026, 1, 9)) == [
+        (datetime(2026, 1, 9, 7, 59, tzinfo=UTC), datetime(2026, 1, 9, 11, 34, tzinfo=UTC)),
+    ]
+
+
+@pytest.mark.parametrize("day", [date(2026, 3, 3), date(2026, 4, 22), date(2026, 9, 18), date(2027, 3, 23), date(2027, 10, 8)])
+def test_tase_holidays_after_trading_week_change(day: date) -> None:
+    cal = Calendar.from_exchange("XTAE")
+    assert cal.is_holiday(day)
+    assert cal.sessions(day, day) == []
 
 
 def test_korean_seollal_2024_multi_day_holiday() -> None:

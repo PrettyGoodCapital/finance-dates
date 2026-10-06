@@ -16,7 +16,7 @@ pub enum WeekendRoll {
     /// Sun → Mon only; Saturday holidays are not substituted (South Africa).
     SundayToMonday,
     /// Sat → Fri, Sun → preceding Fri; a weekend holiday moves to the last
-    /// weekday before it (SIX New Year's Eve).
+    /// weekday before it (B3 New Year's Eve).
     PrecedingFriday,
 }
 

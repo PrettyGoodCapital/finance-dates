@@ -86,9 +86,9 @@ REFERENCE_CALENDARS: dict[str, tuple[str, str | None]] = {
     "XSHG": ("SSE", "XSHG"),
 }
 
-# Dates where finance-dates intentionally differs from ONE reference because that
-# reference is wrong (verified against the official exchange calendar and the
-# other reference). Only consulted when a single reference is available.
+# Dates where finance-dates intentionally differs from ONE reference because of
+# a verified reference error or an unmodeled special session. Only consulted
+# when a single reference is available.
 KNOWN_DIVERGENCES: dict[str, dict[dt.date, str]] = {
     # LSE traded on 2022-05-30: the spring bank holiday was moved to Jun 2 for
     # the Platinum Jubilee (pandas-market-calendars marks it closed).
@@ -98,6 +98,15 @@ KNOWN_DIVERGENCES: dict[str, dict[dt.date, str]] = {
     "XHKG": {
         dt.date(2021, 4, 6): "Ching Ming substitute (Sunday -> after Easter Monday)",
         dt.date(2026, 4, 7): "Ching Ming substitute (Sunday -> after Easter Monday)",
+    },
+    # NSE lists these as regular trading holidays with a separate Muhurat session.
+    # https://www.nseindia.com/resources/exchange-communication-holidays
+    # https://nsearchives.nseindia.com/content/circulars/CMPT50078.pdf
+    "XNSE": {
+        dt.date(2021, 11, 4): "special Muhurat session; regular session closed",
+        dt.date(2022, 10, 24): "special Muhurat session; regular session closed",
+        dt.date(2024, 11, 1): "special Muhurat session; regular session closed",
+        dt.date(2025, 10, 21): "special Muhurat session; regular session closed",
     },
 }
 
@@ -176,3 +185,16 @@ def test_known_reference_divergences_are_still_present() -> None:
 def test_nyse_carter_day_of_mourning_regression() -> None:
     """The closure that started this whole effort stays closed."""
     assert Calendar.from_exchange("XNYS").is_holiday(dt.date(2025, 1, 9))
+
+
+@pytest.mark.parametrize("day", sorted(KNOWN_DIVERGENCES["XNSE"]))
+def test_nse_muhurat_sessions_are_outside_regular_calendar(day: dt.date) -> None:
+    sessions = _pmc_sessions("NSE")
+    if sessions is None:
+        pytest.skip("NSE reference calendar unavailable")
+    special_dates = {dt.date.fromisoformat(str(day)[:10]) for _, days in mcal.get_calendar("NSE").special_opens_adhoc for day in days}
+    assert day in sessions
+    assert day in special_dates
+    cal = Calendar.from_exchange("XNSE")
+    assert cal.is_holiday(day)
+    assert cal.sessions(day, day) == []

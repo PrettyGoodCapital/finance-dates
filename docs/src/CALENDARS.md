@@ -61,8 +61,10 @@ Calendar objects expose:
 | Attribute / method                             | Meaning                                                                             |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `name`                                         | Calendar code used by the resolver                                                  |
+| `source_kind`                                  | `modeled`, `region_fallback`, `weekmask_fallback`, or `range`                       |
+| `source_calendar`                              | Representative calendar name for a region fallback, otherwise `None`                |
 | `market_type`                                  | `finance-enums` `MarketType` label, e.g. `Equities`, `Options`, `Futures`           |
-| `weekmask`                                     | Seven booleans, indexed Monday through Sunday                                       |
+| `weekmask`                                     | Base weekmask, indexed Monday through Sunday                                        |
 | `timezone`                                     | IANA timezone for trading hours, or `""` if no hours are configured                 |
 | `regular_sessions`                             | One or more local regular session templates as open/close hour/minute/offset tuples |
 | `extended_hours`                               | Named local extended-hours templates where available                                |
@@ -86,10 +88,33 @@ plain weekmask-only calendar with the appropriate `market_type`. Codes
 that are entirely unknown, and region codes outside the supported set,
 raise `ValueError` in Python.
 
+`source_kind` identifies how the schedule was selected. `modeled` means an
+explicit family or product mapping, which may be shared by multiple venues
+and does not guarantee venue-specific accuracy. `region_fallback` uses a
+representative country calendar whose original name is in `source_calendar`.
+`weekmask_fallback` has no modeled holidays or trading hours. Calendars from
+`from_range()` have `source_kind == "range"`. Product and asset lookups
+preserve this provenance when they fall back to an exchange calendar.
+
+```python
+shfe = Calendar.from_exchange("XSGE")
+assert shfe.name == "XSGE"
+assert shfe.source_kind == "region_fallback"
+assert shfe.source_calendar == "XSHG"
+```
+
+In Rust, `Calendar.source` is a `CalendarSource` enum with `Modeled`,
+`RegionFallback { source_calendar }`, `WeekmaskFallback`, and `Custom`
+variants. Direct construction with `Calendar::new` or `Calendar::with_type`
+sets `Custom`.
+
 The `weekmask` is always seven booleans indexed Monday through Sunday.
 Most venues use the standard Monday-Friday week. Saudi Arabia (`XSAU`)
-and Tel Aviv (`XTAE`) trade Sunday through Thursday, `FOREX` trades
-Sunday through Friday, and `CRYPTO` trades every day.
+trades Sunday through Thursday. Tel Aviv (`XTAE`) uses Sunday-Thursday
+before 2026-01-05 and Monday-Friday from that date, with Friday regular
+sessions closing at 13:34 local time before the closing auction. Date-based
+calendar methods apply this schedule change; `weekmask` exposes the base
+schedule. `FOREX` trades Sunday through Friday, and `CRYPTO` trades every day.
 
 ______________________________________________________________________
 
@@ -119,7 +144,8 @@ contracts whose hours differ materially from the broad MIC family.
 Every venue below has a dedicated national/exchange holiday rule set.
 Tokyo, Hong Kong, and Shanghai use split regular sessions for their
 lunch breaks; the rest use a single local continuous session. Saudi
-Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.
+Arabia uses a Sunday-through-Thursday weekmask. Tel Aviv uses that weekmask
+before its 2026 transition to Monday-Friday trading.
 
 | Region         | Exchanges (MIC)                      | Holiday-system highlights                                                              |
 | -------------- | ------------------------------------ | -------------------------------------------------------------------------------------- |
@@ -164,7 +190,7 @@ Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.
 | New Zealand    | `XNZE`                               | New Zealand holidays including tabulated Matariki                                      |
 | Saudi Arabia   | `XSAU`                               | Sunday-Thursday week; Eid and national days tabulated                                  |
 | Turkey         | `XIST`                               | Turkish national holidays plus tabulated Eid                                           |
-| Israel         | `XTAE`                               | Sunday-Thursday week; Hebrew-calendar Jewish holidays                                  |
+| Israel         | `XTAE`                               | Sunday-Thursday before 2026-01-05, then Monday-Friday; Jewish holidays                 |
 | UAE            | `XDFM`, `XADS`                       | Emirati national holidays plus tabulated Islamic dates                                 |
 | South Africa   | `XJSE`                               | South African public holidays with Sunday-to-Monday rolls                              |
 
@@ -429,17 +455,22 @@ Important boundaries:
   bridge/make-up tables and similar civic-arrangement tables extend to
   roughly 2030, and the Eid al-Fitr / Eid al-Adha tables for Saudi Arabia
   and Turkey currently run through 2026. Dates beyond a table's horizon
-  are not modeled until the table is extended.
+  are not modeled until the table is extended. Indian holiday tables run
+  through 2026; Tel Aviv's holiday tables run through 2027.
 - Trading-hours templates are date-effective only where explicitly implemented,
-  currently including Tokyo's 2024 close-time extension. Other historical
-  schedule changes may still use current-rule approximations.
-- Weekmasks are static per calendar. Saudi Arabia (`XSAU`) and Tel Aviv
-  (`XTAE`) trade Sunday-Thursday; other venues use a Monday-Friday week.
+  currently including Tokyo's 2024 close-time extension and Tel Aviv's 2026
+  trading-week change. Other historical schedule changes may still use
+  current-rule approximations.
+- Saudi Arabia (`XSAU`) trades Sunday-Thursday. Tel Aviv (`XTAE`) uses a
+  date-effective weekmask; most other venues use a Monday-Friday week.
 - Some special closures, ad-hoc national mourning days, weather events,
   or emergency interruptions may not be modeled beyond the one-off dates
   already tabulated.
 - Early closes are NYSE-shaped: a single early close time applied to the
-  final regular session. Non-US half days are not generally modeled.
+  final regular session. Tel Aviv's Friday early closes are modeled from
+  2026; other non-US half days are not generally modeled.
+- Indian calendars model regular sessions. Special Muhurat sessions on
+  regular trading holidays are excluded.
 - `holidays(start, end)` returns holidays, not every invalid date.
 - `business_days()` is inclusive of both endpoints.
 - Extended-hours coverage is currently populated where the calendar has a
