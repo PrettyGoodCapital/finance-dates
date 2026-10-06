@@ -94,9 +94,24 @@ struct ResolvedSchedule<'a> {
     trading_hours: Option<&'a TradingHours>,
 }
 
+/// How a calendar's schedule was selected.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CalendarSource {
+    /// An explicit calendar family or product mapping, which may be shared by venues.
+    Modeled,
+    /// A representative country calendar used for a MIC without a modeled family.
+    RegionFallback { source_calendar: String },
+    /// A weekday-only calendar without modeled holidays or trading hours.
+    WeekmaskFallback,
+    /// A calendar built directly with `Calendar::new` or `Calendar::with_type`.
+    Custom,
+}
+
 /// A holiday calendar with optional trading hours and a market classification.
 pub struct Calendar {
     pub name: String,
+    /// Schedule provenance; modeled families are not a guarantee of venue accuracy.
+    pub source: CalendarSource,
     /// One of the `MARKET_TYPES` entries, aligned with `finance-enums` `MarketType` variants.
     pub market_type: &'static str,
     pub weekmask: [bool; 7],
@@ -196,6 +211,7 @@ impl Calendar {
     ) -> Self {
         Self {
             name: name.into(),
+            source: CalendarSource::Custom,
             market_type,
             weekmask,
             rules,
@@ -4528,7 +4544,7 @@ fn family_for_mic(mic: &str) -> Option<Family> {
 
 fn build_family(name: &str, fam: Family) -> Calendar {
     use Family::*;
-    match fam {
+    let mut calendar = match fam {
         UsEquity => Calendar::with_type(
             name,
             market_type("Equities"),
@@ -4941,11 +4957,16 @@ fn build_family(name: &str, fam: Family) -> Calendar {
             xbog_rules(),
             Some(xbog_hours()),
         ),
-    }
+    };
+    calendar.source = CalendarSource::Modeled;
+    calendar
 }
 
 /// Build a calendar from its MIC code (or a generic family name like
-/// `FOREX`, `CRYPTO`, `SIFMA_US`, `ICE_US`, `CFE`). Returns `None` if unknown.
+/// `FOREX`, `CRYPTO`, `SIFMA_US`, `ICE_US`, `CFE`). Returns `None` if the code
+/// has neither a modeled family nor a finance-enums exchange record.
+/// Registered MICs without a modeled family use a representative country
+/// calendar or a weekday-only calendar. Inspect `Calendar::source` for provenance.
 pub fn calendar_for_exchange(code: &str) -> Option<Calendar> {
     let upper = code.to_ascii_uppercase();
     if let Some(fam) = family_for_mic(&upper) {
@@ -4954,17 +4975,22 @@ pub fn calendar_for_exchange(code: &str) -> Option<Calendar> {
 
     let record = finance_enums::data::exchange_record(&upper)?;
     if let Some(mut calendar) = calendar_for_region(record.iso_country_code) {
+        calendar.source = CalendarSource::RegionFallback {
+            source_calendar: calendar.name.clone(),
+        };
         calendar.name = upper;
         return Some(calendar);
     }
 
-    Some(Calendar::with_type(
+    let mut calendar = Calendar::with_type(
         upper,
         market_type_for_exchange_record(record),
         STANDARD_WEEKMASK,
         Vec::new(),
         None,
-    ))
+    );
+    calendar.source = CalendarSource::WeekmaskFallback;
+    Some(calendar)
 }
 
 fn market_type_for_exchange_record(record: &finance_enums::data::ExchangeRecord) -> &'static str {
@@ -5509,6 +5535,84 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
         assert!(cal.is_open(inst));
+    }
+
+    #[test]
+    fn modeled_calendar_source() {
+        for code in [
+            "XNYS",
+            "xnys",
+            "XSHG",
+            "PINX",
+            "CBOT_GRAINS",
+            "FOREX",
+            "CRYPTO",
+        ] {
+            assert_eq!(
+                calendar_for_exchange(code).unwrap().source,
+                CalendarSource::Modeled
+            );
+        }
+        assert!(calendar_for_exchange("ZZZZ").is_none());
+    }
+
+    #[test]
+    fn chinese_futures_calendar_reports_region_fallback() {
+        let region = calendar_for_region("CN").unwrap();
+        let day = NaiveDate::from_ymd_opt(2026, 9, 15).unwrap();
+        assert_eq!(region.source, CalendarSource::Modeled);
+        for code in ["XSGE", "XDCE", "XZCE", "xsge"] {
+            let cal = calendar_for_exchange(code).unwrap();
+            assert_eq!(cal.name, code.to_ascii_uppercase());
+            assert_eq!(
+                cal.source,
+                CalendarSource::RegionFallback {
+                    source_calendar: "XSHG".to_string(),
+                }
+            );
+            assert_eq!(cal.market_type, market_type("Equities"));
+            assert_eq!(
+                cal.sessions_between(day, day),
+                region.sessions_between(day, day)
+            );
+            assert_eq!(cal.holidays(2026), region.holidays(2026));
+        }
+    }
+
+    #[test]
+    fn weekmask_calendar_reports_fallback() {
+        let cal = calendar_for_exchange("24EX").unwrap();
+        assert_eq!(cal.source, CalendarSource::WeekmaskFallback);
+        assert_eq!(cal.weekmask, STANDARD_WEEKMASK);
+        assert!(cal.rules.is_empty());
+        assert!(cal.trading_hours.is_none());
+    }
+
+    #[test]
+    fn product_and_asset_calendar_sources() {
+        for cal in [
+            calendar_for_product("XSGE", "Gold").unwrap(),
+            calendar_for_asset("XSGE", "Commodity", Some("Gold")).unwrap(),
+        ] {
+            assert_eq!(
+                cal.source,
+                CalendarSource::RegionFallback {
+                    source_calendar: "XSHG".to_string(),
+                }
+            );
+        }
+        for cal in [
+            calendar_for_product("XNYM", "NaturalGas").unwrap(),
+            calendar_for_asset("XNYM", "Commodity", Some("NaturalGas")).unwrap(),
+        ] {
+            assert_eq!(cal.source, CalendarSource::Modeled);
+        }
+    }
+
+    #[test]
+    fn custom_calendar_source() {
+        let cal = Calendar::new("custom", STANDARD_WEEKMASK, Vec::new(), None);
+        assert_eq!(cal.source, CalendarSource::Custom);
     }
 
     #[test]

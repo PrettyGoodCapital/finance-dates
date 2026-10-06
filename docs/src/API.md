@@ -127,6 +127,8 @@ Useful attributes:
 
 ```python
 nyse.name         # "XNYS"
+nyse.source_kind  # "modeled"
+nyse.source_calendar  # None
 nyse.market_type  # "Equities"
 nyse.weekmask     # [True, True, True, True, True, False, False]
 nyse.timezone     # "America/New_York"
@@ -144,6 +146,22 @@ grains.regular_sessions
 energy = Calendar.from_exchange("CME_ENERGY")
 energy.regular_sessions
 # [(17, 0, -1, 16, 0, 0)]
+```
+
+`source_kind` and `source_calendar` are read-only attributes. `source_kind`
+is `"modeled"` for explicit family/product mappings, `"region_fallback"`
+for a representative country calendar, `"weekmask_fallback"` for a
+weekday-only calendar without holidays or trading hours, and `"range"`
+for `from_range()`. Modeled families may be shared by multiple venues;
+this classification does not guarantee venue-specific accuracy.
+`source_calendar` is the original representative calendar name for a region
+fallback and `None` otherwise. Product and asset lookups preserve exchange
+fallback provenance.
+
+```python
+shfe = Calendar.from_exchange("XSGE")
+assert shfe.source_kind == "region_fallback"
+assert shfe.source_calendar == "XSHG"
 ```
 
 Date methods:

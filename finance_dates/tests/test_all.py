@@ -215,6 +215,60 @@ def test_unknown_exchange_raises() -> None:
         Calendar.from_exchange("ZZZZ")
 
 
+@pytest.mark.parametrize("code", ["XNYS", "xnys", "XSHG", "PINX", "CBOT_GRAINS", "FOREX", "CRYPTO"])
+def test_modeled_calendar_source(code: str) -> None:
+    cal = Calendar.from_exchange(code)
+    assert cal.source_kind == "modeled"
+    assert cal.source_calendar is None
+
+
+@pytest.mark.parametrize("code", ["XSGE", "XDCE", "XZCE", "xsge"])
+def test_chinese_futures_calendar_reports_region_fallback(code: str) -> None:
+    cal = Calendar.from_exchange(code)
+    region = Calendar.from_region("CN")
+    day = date(2026, 9, 15)
+
+    assert cal.name == code.upper()
+    assert cal.source_kind == "region_fallback"
+    assert cal.source_calendar == "XSHG"
+    assert cal.market_type == "Equities"
+    assert cal.sessions(day, day) == region.sessions(day, day)
+    assert cal.holidays(2026) == region.holidays(2026)
+    assert region.source_kind == "modeled"
+    assert region.source_calendar is None
+
+
+def test_weekmask_calendar_reports_fallback() -> None:
+    cal = Calendar.from_exchange("24EX")
+    assert cal.source_kind == "weekmask_fallback"
+    assert cal.source_calendar is None
+    assert cal.weekmask == [True, True, True, True, True, False, False]
+    assert cal.holidays(2026) == []
+    assert cal.regular_sessions == []
+
+
+def test_product_and_asset_calendar_sources() -> None:
+    for cal in [
+        Calendar.from_product("XSGE", "Gold"),
+        Calendar.from_asset("XSGE", "Commodity", subclass="Gold"),
+    ]:
+        assert cal.source_kind == "region_fallback"
+        assert cal.source_calendar == "XSHG"
+
+    for cal in [
+        Calendar.from_product("XNYM", "NaturalGas"),
+        Calendar.from_asset("XNYM", "Commodity", subclass="NaturalGas"),
+    ]:
+        assert cal.source_kind == "modeled"
+        assert cal.source_calendar is None
+
+
+def test_range_calendar_source() -> None:
+    cal = Calendar.from_range(date(2026, 9, 14), date(2026, 9, 15))
+    assert cal.source_kind == "range"
+    assert cal.source_calendar is None
+
+
 def test_holidays_year_returns_dates() -> None:
     cal = Calendar.from_exchange("XNYS")
     hs = cal.holidays(2024)

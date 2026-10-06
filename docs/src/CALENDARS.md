@@ -61,6 +61,8 @@ Calendar objects expose:
 | Attribute / method                             | Meaning                                                                             |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `name`                                         | Calendar code used by the resolver                                                  |
+| `source_kind`                                  | `modeled`, `region_fallback`, `weekmask_fallback`, or `range`                       |
+| `source_calendar`                              | Representative calendar name for a region fallback, otherwise `None`                |
 | `market_type`                                  | `finance-enums` `MarketType` label, e.g. `Equities`, `Options`, `Futures`           |
 | `weekmask`                                     | Seven booleans, indexed Monday through Sunday                                       |
 | `timezone`                                     | IANA timezone for trading hours, or `""` if no hours are configured                 |
@@ -85,6 +87,26 @@ calendar for their ISO country when one is modeled, and otherwise to a
 plain weekmask-only calendar with the appropriate `market_type`. Codes
 that are entirely unknown, and region codes outside the supported set,
 raise `ValueError` in Python.
+
+`source_kind` identifies how the schedule was selected. `modeled` means an
+explicit family or product mapping, which may be shared by multiple venues
+and does not guarantee venue-specific accuracy. `region_fallback` uses a
+representative country calendar whose original name is in `source_calendar`.
+`weekmask_fallback` has no modeled holidays or trading hours. Calendars from
+`from_range()` have `source_kind == "range"`. Product and asset lookups
+preserve this provenance when they fall back to an exchange calendar.
+
+```python
+shfe = Calendar.from_exchange("XSGE")
+assert shfe.name == "XSGE"
+assert shfe.source_kind == "region_fallback"
+assert shfe.source_calendar == "XSHG"
+```
+
+In Rust, `Calendar.source` is a `CalendarSource` enum with `Modeled`,
+`RegionFallback { source_calendar }`, `WeekmaskFallback`, and `Custom`
+variants. Direct construction with `Calendar::new` or `Calendar::with_type`
+sets `Custom`.
 
 The `weekmask` is always seven booleans indexed Monday through Sunday.
 Most venues use the standard Monday-Friday week. Saudi Arabia (`XSAU`)

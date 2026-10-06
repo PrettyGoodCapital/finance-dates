@@ -8,8 +8,8 @@ use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 
 use ::finance_dates::{
     business_day_range as core_business_day_range, calendar_for_asset, calendar_for_exchange,
-    calendar_for_product, calendar_for_region, date_range as core_date_range, COUNTRY_CODES,
-    COUNTRY_CODES3, EXCHANGE_CODES, STANDARD_WEEKMASK,
+    calendar_for_product, calendar_for_region, date_range as core_date_range, CalendarSource,
+    COUNTRY_CODES, COUNTRY_CODES3, EXCHANGE_CODES, STANDARD_WEEKMASK,
 };
 
 fn pydate_to_naive(d: &Bound<'_, PyDate>) -> PyResult<NaiveDate> {
@@ -228,6 +228,29 @@ impl PyCalendar {
         match &self.inner {
             Some(inner) => Ok(inner.name.clone()),
             None => Ok("range".to_string()),
+        }
+    }
+
+    /// Schedule source: modeled, region_fallback, weekmask_fallback, custom, or range.
+    #[getter]
+    fn source_kind(&self) -> &'static str {
+        match self.inner.as_ref().map(|inner| &inner.source) {
+            Some(CalendarSource::Modeled) => "modeled",
+            Some(CalendarSource::RegionFallback { .. }) => "region_fallback",
+            Some(CalendarSource::WeekmaskFallback) => "weekmask_fallback",
+            Some(CalendarSource::Custom) => "custom",
+            None => "range",
+        }
+    }
+
+    /// Representative calendar name for a region fallback, otherwise None.
+    #[getter]
+    fn source_calendar(&self) -> Option<String> {
+        match self.inner.as_ref().map(|inner| &inner.source) {
+            Some(CalendarSource::RegionFallback { source_calendar }) => {
+                Some(source_calendar.clone())
+            }
+            _ => None,
         }
     }
 
