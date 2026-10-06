@@ -62,7 +62,7 @@ develop = [
 # Their holiday data ships in the package, so the check is deterministic and
 # needs no network access. Not vendored into our source.
 reference = [
-    "pandas-market-calendars",
+    "pandas-market-calendars>=5.5",
     "exchange-calendars",
 ]
 

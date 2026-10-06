@@ -350,7 +350,7 @@ krx.timezone           # "Asia/Seoul"
 krx.holidays(2024)     # Korean holidays including lunar Seollal and Chuseok
 
 tase = Calendar.from_exchange("XTAE")
-tase.weekmask          # Sunday-Thursday trading week
+tase.weekmask          # Sunday-Thursday base weekmask; date-based methods use Monday-Friday from 2026-01-05
 ```
 
 ### Bucket dates into periods
