@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API" href="API.html"><link rel="prev" title="finance dates" href="../../index.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Calendars - finance dates v0.4.1</title>
+        <title>Calendars - finance dates v0.5.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></div></a>
+      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></span>
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -314,11 +314,17 @@ useful for quick tests and generic weekday series.</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></td>
 <td><p>Calendar code used by the resolver</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">source_kind</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">modeled</span></code>, <code class="docutils literal notranslate"><span class="pre">region_fallback</span></code>, <code class="docutils literal notranslate"><span class="pre">weekmask_fallback</span></code>, or <code class="docutils literal notranslate"><span class="pre">range</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">source_calendar</span></code></p></td>
+<td><p>Representative calendar name for a region fallback, otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+</tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">market_type</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">finance-enums</span></code> <code class="docutils literal notranslate"><span class="pre">MarketType</span></code> label, e.g. <code class="docutils literal notranslate"><span class="pre">Equities</span></code>, <code class="docutils literal notranslate"><span class="pre">Options</span></code>, <code class="docutils literal notranslate"><span class="pre">Futures</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">weekmask</span></code></p></td>
-<td><p>Seven booleans, indexed Monday through Sunday</p></td>
+<td><p>Base weekmask, indexed Monday through Sunday</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">timezone</span></code></p></td>
 <td><p>IANA timezone for trading hours, or <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> if no hours are configured</p></td>
@@ -372,10 +378,30 @@ calendar for their ISO country when one is modeled, and otherwise to a
 plain weekmask-only calendar with the appropriate <code class="docutils literal notranslate"><span class="pre">market_type</span></code>. Codes
 that are entirely unknown, and region codes outside the supported set,
 raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> in Python.</p>
+<p><code class="docutils literal notranslate"><span class="pre">source_kind</span></code> identifies how the schedule was selected. <code class="docutils literal notranslate"><span class="pre">modeled</span></code> means an
+explicit family or product mapping, which may be shared by multiple venues
+and does not guarantee venue-specific accuracy. <code class="docutils literal notranslate"><span class="pre">region_fallback</span></code> uses a
+representative country calendar whose original name is in <code class="docutils literal notranslate"><span class="pre">source_calendar</span></code>.
+<code class="docutils literal notranslate"><span class="pre">weekmask_fallback</span></code> has no modeled holidays or trading hours. Calendars from
+<code class="docutils literal notranslate"><span class="pre">from_range()</span></code> have <code class="docutils literal notranslate"><span class="pre">source_kind</span> <span class="pre">==</span> <span class="pre">&quot;range&quot;</span></code>. Product and asset lookups
+preserve this provenance when they fall back to an exchange calendar.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">shfe</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XSGE"</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">shfe</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"XSGE"</span>
+<span class="k">assert</span> <span class="n">shfe</span><span class="o">.</span><span class="n">source_kind</span> <span class="o">==</span> <span class="s2">"region_fallback"</span>
+<span class="k">assert</span> <span class="n">shfe</span><span class="o">.</span><span class="n">source_calendar</span> <span class="o">==</span> <span class="s2">"XSHG"</span>
+</pre></div>
+</div>
+<p>In Rust, <code class="docutils literal notranslate"><span class="pre">Calendar.source</span></code> is a <code class="docutils literal notranslate"><span class="pre">CalendarSource</span></code> enum with <code class="docutils literal notranslate"><span class="pre">Modeled</span></code>,
+<code class="docutils literal notranslate"><span class="pre">RegionFallback</span> <span class="pre">{</span> <span class="pre">source_calendar</span> <span class="pre">}</span></code>, <code class="docutils literal notranslate"><span class="pre">WeekmaskFallback</span></code>, and <code class="docutils literal notranslate"><span class="pre">Custom</span></code>
+variants. Direct construction with <code class="docutils literal notranslate"><span class="pre">Calendar::new</span></code> or <code class="docutils literal notranslate"><span class="pre">Calendar::with_type</span></code>
+sets <code class="docutils literal notranslate"><span class="pre">Custom</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">weekmask</span></code> is always seven booleans indexed Monday through Sunday.
 Most venues use the standard Monday-Friday week. Saudi Arabia (<code class="docutils literal notranslate"><span class="pre">XSAU</span></code>)
-and Tel Aviv (<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) trade Sunday through Thursday, <code class="docutils literal notranslate"><span class="pre">FOREX</span></code> trades
-Sunday through Friday, and <code class="docutils literal notranslate"><span class="pre">CRYPTO</span></code> trades every day.</p>
+trades Sunday through Thursday. Tel Aviv (<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) uses Sunday-Thursday
+before 2026-01-05 and Monday-Friday from that date, with Friday regular
+sessions closing at 13:34 local time before the closing auction. Date-based
+calendar methods apply this schedule change; <code class="docutils literal notranslate"><span class="pre">weekmask</span></code> exposes the base
+schedule. <code class="docutils literal notranslate"><span class="pre">FOREX</span></code> trades Sunday through Friday, and <code class="docutils literal notranslate"><span class="pre">CRYPTO</span></code> trades every day.</p>
 </section>
 <hr class="docutils" />
 <section id="market-families">
@@ -431,7 +457,8 @@ contracts whose hours differ materially from the broad MIC family.</p>
 <p>Every venue below has a dedicated national/exchange holiday rule set.
 Tokyo, Hong Kong, and Shanghai use split regular sessions for their
 lunch breaks; the rest use a single local continuous session. Saudi
-Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.</p>
+Arabia uses a Sunday-through-Thursday weekmask. Tel Aviv uses that weekmask
+before its 2026 transition to Monday-Friday trading.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -607,7 +634,7 @@ Arabia and Tel Aviv use a Sunday-through-Thursday weekmask.</p>
 </tr>
 <tr class="row-odd"><td><p>Israel</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">XTAE</span></code></p></td>
-<td><p>Sunday-Thursday week; Hebrew-calendar Jewish holidays</p></td>
+<td><p>Sunday-Thursday before 2026-01-05, then Monday-Friday; Jewish holidays</p></td>
 </tr>
 <tr class="row-even"><td><p>UAE</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">XDFM</span></code>, <code class="docutils literal notranslate"><span class="pre">XADS</span></code></p></td>
@@ -963,17 +990,22 @@ enough.</p></li>
 bridge/make-up tables and similar civic-arrangement tables extend to
 roughly 2030, and the Eid al-Fitr / Eid al-Adha tables for Saudi Arabia
 and Turkey currently run through 2026. Dates beyond a table’s horizon
-are not modeled until the table is extended.</p></li>
+are not modeled until the table is extended. Indian holiday tables run
+through 2026; Tel Aviv’s holiday tables run through 2027.</p></li>
 <li><p>Trading-hours templates are date-effective only where explicitly implemented,
-currently including Tokyo’s 2024 close-time extension. Other historical
-schedule changes may still use current-rule approximations.</p></li>
-<li><p>Weekmasks are static per calendar. Saudi Arabia (<code class="docutils literal notranslate"><span class="pre">XSAU</span></code>) and Tel Aviv
-(<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) trade Sunday-Thursday; other venues use a Monday-Friday week.</p></li>
+currently including Tokyo’s 2024 close-time extension and Tel Aviv’s 2026
+trading-week change. Other historical schedule changes may still use
+current-rule approximations.</p></li>
+<li><p>Saudi Arabia (<code class="docutils literal notranslate"><span class="pre">XSAU</span></code>) trades Sunday-Thursday. Tel Aviv (<code class="docutils literal notranslate"><span class="pre">XTAE</span></code>) uses a
+date-effective weekmask; most other venues use a Monday-Friday week.</p></li>
 <li><p>Some special closures, ad-hoc national mourning days, weather events,
 or emergency interruptions may not be modeled beyond the one-off dates
 already tabulated.</p></li>
 <li><p>Early closes are NYSE-shaped: a single early close time applied to the
-final regular session. Non-US half days are not generally modeled.</p></li>
+final regular session. Tel Aviv’s Friday early closes are modeled from
+2026; other non-US half days are not generally modeled.</p></li>
+<li><p>Indian calendars model regular sessions. Special Muhurat sessions on
+regular trading holidays are excluded.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">holidays(start,</span> <span class="pre">end)</span></code> returns holidays, not every invalid date.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">business_days()</span></code> is inclusive of both endpoints.</p></li>
 <li><p>Extended-hours coverage is currently populated where the calendar has a
@@ -1069,7 +1101,7 @@ UTC datetimes for clarity.</p></li>
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=c87aa342"></script>
+</div><script src="../../_static/documentation_options.js?v=1dd76d02"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

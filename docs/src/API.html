@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="Calendars" href="CALENDARS.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>API - finance dates v0.4.1</title>
+        <title>API - finance dates v0.5.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></div></a>
+      <a href="../../index.html"><div class="brand">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></span>
+  <span class="sidebar-brand-text">finance dates <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -424,6 +424,23 @@ empty list if no trading hours are configured.</p>
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.source_calendar">
+<span class="sig-name descname"><span class="pre">source_calendar</span></span><a class="headerlink" href="#finance_dates.Calendar.source_calendar" title="Link to this definition">¶</a></dt>
+<dd><p>Representative calendar name for a region fallback, otherwise None.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="finance_dates.Calendar.source_kind">
+<span class="sig-name descname"><span class="pre">source_kind</span></span><a class="headerlink" href="#finance_dates.Calendar.source_kind" title="Link to this definition">¶</a></dt>
+<dd><p>modeled, region_fallback, weekmask_fallback, custom, or range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Schedule source</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="finance_dates.Calendar.timezone">
 <span class="sig-name descname"><span class="pre">timezone</span></span><a class="headerlink" href="#finance_dates.Calendar.timezone" title="Link to this definition">¶</a></dt>
 <dd><p>IANA timezone name for trading hours, or “” if no hours configured.</p>
@@ -497,6 +514,8 @@ values; when no product-specific calendar is modeled, it falls back to the broad
 exchange calendar for recognized finance-enums asset labels.</p>
 <p>Useful attributes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">nyse</span><span class="o">.</span><span class="n">name</span>         <span class="c1"># "XNYS"</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">source_kind</span>  <span class="c1"># "modeled"</span>
+<span class="n">nyse</span><span class="o">.</span><span class="n">source_calendar</span>  <span class="c1"># None</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">market_type</span>  <span class="c1"># "Equities"</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">weekmask</span>     <span class="c1"># [True, True, True, True, True, False, False]</span>
 <span class="n">nyse</span><span class="o">.</span><span class="n">timezone</span>     <span class="c1"># "America/New_York"</span>
@@ -514,6 +533,20 @@ exchange calendar for recognized finance-enums asset labels.</p>
 <span class="n">energy</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"CME_ENERGY"</span><span class="p">)</span>
 <span class="n">energy</span><span class="o">.</span><span class="n">regular_sessions</span>
 <span class="c1"># [(17, 0, -1, 16, 0, 0)]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">source_kind</span></code> and <code class="docutils literal notranslate"><span class="pre">source_calendar</span></code> are read-only attributes. <code class="docutils literal notranslate"><span class="pre">source_kind</span></code>
+is <code class="docutils literal notranslate"><span class="pre">&quot;modeled&quot;</span></code> for explicit family/product mappings, <code class="docutils literal notranslate"><span class="pre">&quot;region_fallback&quot;</span></code>
+for a representative country calendar, <code class="docutils literal notranslate"><span class="pre">&quot;weekmask_fallback&quot;</span></code> for a
+weekday-only calendar without holidays or trading hours, and <code class="docutils literal notranslate"><span class="pre">&quot;range&quot;</span></code>
+for <code class="docutils literal notranslate"><span class="pre">from_range()</span></code>. Modeled families may be shared by multiple venues;
+this classification does not guarantee venue-specific accuracy.
+<code class="docutils literal notranslate"><span class="pre">source_calendar</span></code> is the original representative calendar name for a region
+fallback and <code class="docutils literal notranslate"><span class="pre">None</span></code> otherwise. Product and asset lookups preserve exchange
+fallback provenance.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">shfe</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XSGE"</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">shfe</span><span class="o">.</span><span class="n">source_kind</span> <span class="o">==</span> <span class="s2">"region_fallback"</span>
+<span class="k">assert</span> <span class="n">shfe</span><span class="o">.</span><span class="n">source_calendar</span> <span class="o">==</span> <span class="s2">"XSHG"</span>
 </pre></div>
 </div>
 <p>Date methods:</p>
@@ -706,7 +739,7 @@ calendar-aware date helpers that default to the <code class="docutils literal no
 <span class="n">krx</span><span class="o">.</span><span class="n">holidays</span><span class="p">(</span><span class="mi">2024</span><span class="p">)</span>     <span class="c1"># Korean holidays including lunar Seollal and Chuseok</span>
 
 <span class="n">tase</span> <span class="o">=</span> <span class="n">Calendar</span><span class="o">.</span><span class="n">from_exchange</span><span class="p">(</span><span class="s2">"XTAE"</span><span class="p">)</span>
-<span class="n">tase</span><span class="o">.</span><span class="n">weekmask</span>          <span class="c1"># Sunday-Thursday trading week</span>
+<span class="n">tase</span><span class="o">.</span><span class="n">weekmask</span>          <span class="c1"># Sunday-Thursday base weekmask; date-based methods use Monday-Friday from 2026-01-05</span>
 </pre></div>
 </div>
 </section>
@@ -823,6 +856,8 @@ listed at the top of this page. The native module
 <li><a class="reference internal" href="#finance_dates.Calendar.previous_business_day"><code class="docutils literal notranslate"><span class="pre">Calendar.previous_business_day()</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.regular_sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.regular_sessions</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.sessions"><code class="docutils literal notranslate"><span class="pre">Calendar.sessions()</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.source_calendar"><code class="docutils literal notranslate"><span class="pre">Calendar.source_calendar</span></code></a></li>
+<li><a class="reference internal" href="#finance_dates.Calendar.source_kind"><code class="docutils literal notranslate"><span class="pre">Calendar.source_kind</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.timezone"><code class="docutils literal notranslate"><span class="pre">Calendar.timezone</span></code></a></li>
 <li><a class="reference internal" href="#finance_dates.Calendar.weekmask"><code class="docutils literal notranslate"><span class="pre">Calendar.weekmask</span></code></a></li>
 </ul>
@@ -861,7 +896,7 @@ listed at the top of this page. The native module
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=c87aa342"></script>
+</div><script src="../../_static/documentation_options.js?v=1dd76d02"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
