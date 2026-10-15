@@ -7,9 +7,11 @@ Python module is a thin re-export layer.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .periods import period_grid
 
-try:  # native extension is unavailable in some doc builds
+if TYPE_CHECKING:
     from .finance_dates import (
         COUNTRY_CODES,
         COUNTRY_CODES3,
@@ -17,14 +19,23 @@ try:  # native extension is unavailable in some doc builds
         Calendar,
         date_range,
     )
-except ImportError:  # pragma: no cover - sphinx fallback
-    Calendar = None  # type: ignore[assignment]
-    COUNTRY_CODES = ()  # type: ignore[assignment]
-    COUNTRY_CODES3 = ()  # type: ignore[assignment]
-    EXCHANGE_CODES = ()  # type: ignore[assignment]
+else:
+    try:  # native extension is unavailable in some doc builds
+        from .finance_dates import (
+            COUNTRY_CODES,
+            COUNTRY_CODES3,
+            EXCHANGE_CODES,
+            Calendar,
+            date_range,
+        )
+    except ImportError:  # pragma: no cover - sphinx fallback
+        Calendar = None
+        COUNTRY_CODES = ()
+        COUNTRY_CODES3 = ()
+        EXCHANGE_CODES = ()
 
-    def date_range(*_args, **_kwargs):  # type: ignore[no-redef]
-        raise ImportError("finance_dates native extension is not available")
+        def date_range(*_args, **_kwargs):
+            raise ImportError("finance_dates native extension is not available")
 
 
 __version__ = "0.5.0"

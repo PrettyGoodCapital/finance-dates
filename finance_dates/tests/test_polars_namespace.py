@@ -17,9 +17,9 @@ def test_polars_fdates_namespace_business_day_helpers() -> None:
     )
 
     out = df.with_columns(
-        pl.col("trade_date").fdates.shift_business_days(1, exchange="XNYS").alias("next_trade"),
-        pl.col("trade_date").fdates.align_to_business_day("following", exchange="XNYS").alias("aligned"),
-        pl.col("trade_date").fdates.day_count_fraction(pl.col("settle_date"), convention="act_360").alias("dcf"),
+        pl.col("trade_date").fdates.shift_business_days(1, exchange="XNYS").alias("next_trade"),  # ty: ignore[unresolved-attribute]
+        pl.col("trade_date").fdates.align_to_business_day("following", exchange="XNYS").alias("aligned"),  # ty: ignore[unresolved-attribute]
+        pl.col("trade_date").fdates.day_count_fraction(pl.col("settle_date"), convention="act_360").alias("dcf"),  # ty: ignore[unresolved-attribute]
     )
 
     assert out["next_trade"].to_list() == [date(2024, 7, 5), date(2024, 7, 8)]
@@ -30,6 +30,6 @@ def test_polars_fdates_namespace_business_day_helpers() -> None:
 def test_polars_fdates_namespace_modified_following() -> None:
     df = pl.DataFrame({"d": [date(2024, 8, 31)]})
 
-    out = df.with_columns(pl.col("d").fdates.align_to_business_day("modified_following", exchange="XNYS").alias("rolled"))
+    out = df.with_columns(pl.col("d").fdates.align_to_business_day("modified_following", exchange="XNYS").alias("rolled"))  # ty: ignore[unresolved-attribute]
 
     assert out["rolled"].to_list() == [date(2024, 8, 30)]
