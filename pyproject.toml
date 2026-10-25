@@ -65,6 +65,8 @@ develop = [
 reference = [
     "pandas-market-calendars>=5.5",
     "exchange-calendars",
+    # pandas 3.1 breaks exchange-calendars' XTAE calendar construction.
+    "pandas<3.1",
 ]
 
 [project.scripts]
@@ -128,6 +130,8 @@ archs = "arm64"
 environment = {PATH="$UserProfile\\.cargo\bin;$PATH", CARGO_TERM_COLOR="always"}
 skip = "*win32 *arm64"
 
+[tool.codespell]
+ignore-words-list = "tha,whit"
 
 [tool.coverage.run]
 branch = true
