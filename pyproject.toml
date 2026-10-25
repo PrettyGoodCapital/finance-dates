@@ -65,6 +65,8 @@ develop = [
 reference = [
     "pandas-market-calendars>=5.5",
     "exchange-calendars",
+    # pandas 3.1 breaks exchange-calendars' XTAE calendar construction.
+    "pandas<3.1",
 ]
 
 [project.scripts]
