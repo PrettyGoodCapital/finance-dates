@@ -128,6 +128,8 @@ archs = "arm64"
 environment = {PATH="$UserProfile\\.cargo\bin;$PATH", CARGO_TERM_COLOR="always"}
 skip = "*win32 *arm64"
 
+[tool.codespell]
+ignore-words-list = "tha,whit"
 
 [tool.coverage.run]
 branch = true
