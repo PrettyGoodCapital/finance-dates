@@ -1300,9 +1300,12 @@ static HKEX_ONE_OFFS: &[(i32, u32, u32)] = &[
     (2016, 8, 2),   // Typhoon Nida
     (2016, 10, 21), // Typhoon Haima
     (2017, 8, 23),  // Typhoon Hato
+    (2020, 10, 13), // Typhoon Nangka
+    (2021, 10, 13), // Typhoon Kompasu
     (2023, 7, 17),  // Typhoon Talim
     (2023, 9, 1),   // Super Typhoon Saola
     (2023, 9, 8),   // Black rainstorm
+    (2024, 9, 6),   // Super Typhoon Yagi
 ];
 
 fn hkex_trading_hours() -> TradingHours {
