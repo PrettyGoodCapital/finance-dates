@@ -121,7 +121,11 @@ def _pmc_sessions(name: str) -> set[dt.date] | None:
 def _ec_sessions(name: str | None) -> set[dt.date] | None:
     if name is None or name not in set(xcals.get_calendar_names()):
         return None
-    cal = xcals.get_calendar(name)
+    try:
+        cal = xcals.get_calendar(name)
+    except ValueError:
+        # exchange-calendars 4.13 cannot build XTAE under pandas 3.1; fall back to the other reference.
+        return None
     lo = max(START, cal.first_session.date())
     hi = min(END, cal.last_session.date())
     return {t.date() for t in cal.sessions_in_range(lo.isoformat(), hi.isoformat())}
