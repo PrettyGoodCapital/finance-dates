@@ -6,7 +6,11 @@ edition = "2021"
 license = "Apache-2.0"
 readme = "../README.md"
 repository = "https://github.com/prettygoodcapital/finance-dates"
+<<<<<<< before updating
 description = "Fast date ranges, holiday calendars, and trading hours for financial markets"
+=======
+description = "Standard financial dates"
+>>>>>>> after updating
 
 [lib]
 name = "finance_dates"
