@@ -3,6 +3,26 @@
 version = 4
 
 [[package]]
+name = "abi_safe_enum"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cc9f23e53619c573430dcf6314b7c55c829141fd44150acaa0648dc212f0aa8"
+dependencies = [
+ "abi_safe_enum_macros",
+]
+
+[[package]]
+name = "abi_safe_enum_macros"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de0b1256aaaf2f3e75111ace3e019b0e38738f75d2c06e286891d064ba1a40f7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -78,9 +98,12 @@ dependencies = [
 
 [[package]]
 name = "finance_enums"
-version = "0.7.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63102ee62a486b46637f05f168e4ebf32e02f31fd1b9d0d187decdb993c85a0e"
+checksum = "83bbf1ae8b8db9a9b5748f2ab876176c05c43e24f7f1e69e9485492b92954788"
+dependencies = [
+ "abi_safe_enum",
+]
 
 [[package]]
 name = "find-msvc-tools"

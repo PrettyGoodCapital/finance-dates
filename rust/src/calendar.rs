@@ -13,12 +13,19 @@ use crate::holiday::{HolidayRule, Weekday, WeekendRoll};
 use crate::range::STANDARD_WEEKMASK;
 use crate::trading_hours::{ExtendedSession, Session, TradingHours};
 
-pub use finance_enums::data::{
-    AgricultureType_VARIANTS as AGRICULTURE_TYPES, CommodityType_VARIANTS as COMMODITY_TYPES,
-    CountryCode3_VARIANTS as COUNTRY_CODES3, CountryCode_VARIANTS as COUNTRY_CODES,
-    EnergyType_VARIANTS as ENERGY_TYPES, ExchangeCode_VARIANTS as EXCHANGE_CODES,
-    MetalsType_VARIANTS as METALS_TYPES, UnderlyingAssetClass_VARIANTS as UNDERLYING_ASSET_CLASSES,
+pub use finance_enums::data::ExchangeCode_VARIANTS as EXCHANGE_CODES;
+use finance_enums::data::{
+    AgricultureType, CommodityType, CountryCodeAlpha2, CountryCodeAlpha3, EnergyType, MetalType,
+    UnderlyingAssetClass,
 };
+
+pub const AGRICULTURE_TYPES: &[&str] = AgricultureType::VARIANTS;
+pub const COMMODITY_TYPES: &[&str] = CommodityType::VARIANTS;
+pub const COUNTRY_CODES: &[&str] = CountryCodeAlpha2::VARIANTS;
+pub const COUNTRY_CODES3: &[&str] = CountryCodeAlpha3::VARIANTS;
+pub const ENERGY_TYPES: &[&str] = EnergyType::VARIANTS;
+pub const METALS_TYPES: &[&str] = MetalType::VARIANTS;
+pub const UNDERLYING_ASSET_CLASSES: &[&str] = UnderlyingAssetClass::VARIANTS;
 
 /// Market types usable by calendars. The finance-enums C ABI sentinel
 /// `MarketType::Invalid` is intentionally excluded.
@@ -58,7 +65,7 @@ fn finance_enum_variant(
 fn market_type(variant: &str) -> &'static str {
     finance_enum_variant(
         MARKET_TYPE_ENUM,
-        finance_enums::data::MarketType_VARIANTS,
+        finance_enums::data::MarketType::VARIANTS,
         variant,
     )
 }
@@ -5730,7 +5737,7 @@ mod tests {
         assert_eq!(MARKET_TYPES, expected);
         assert!(MARKET_TYPES
             .iter()
-            .all(|variant| finance_enums::data::MarketType_VARIANTS.contains(variant)));
+            .all(|variant| finance_enums::data::MarketType::VARIANTS.contains(variant)));
         assert!(!MARKET_TYPES.contains(&"Invalid"));
     }
 
